@@ -208,7 +208,7 @@ def test_codex_statusline_render_injects_version():
     compile(rendered, "<codex-statusline>", "exec")
 
 
-def test_codex_statusline_hook_plain_and_terminal_direct_colored(tmp_path):
+def test_codex_statusline_hook_silent_and_terminal_direct_colored(tmp_path):
     script = tmp_path / "codex-statusline.py"
     script.write_text(hooks._render_codex_statusline_hook(), encoding="utf-8")
     rollout = tmp_path / "session.jsonl"
@@ -226,9 +226,8 @@ def test_codex_statusline_hook_plain_and_terminal_direct_colored(tmp_path):
 
     hooked = subprocess.run([sys.executable, str(script)], input=payload, text=True,
                             capture_output=True, check=True, env=env)
-    message = json.loads(hooked.stdout)["systemMessage"]
-    assert "Total: 1.2M" in message and "Model: gpt-6-sol high" in message
-    assert "\x1b" not in message
+    assert hooked.stdout == ""
+    assert hooked.stderr == ""
     direct = subprocess.run([sys.executable, str(script), "--direct"], input=payload, text=True,
                             capture_output=True, check=True, env=env)
     assert "\x1b[" in direct.stdout and "Total: 1.2M" in direct.stdout
@@ -311,7 +310,7 @@ def test_codex_statusline_deepseek_cost_uses_each_request_time(tmp_path):
     payload = {"transcript_path": str(rollout), "cwd": str(tmp_path)}
 
     result = subprocess.run(
-        [sys.executable, str(script)], input=json.dumps(payload), text=True,
+        [sys.executable, str(script), "--direct"], input=json.dumps(payload), text=True,
         capture_output=True, check=True, env={**os.environ, "HOME": str(tmp_path)},
     )
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)

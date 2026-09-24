@@ -58,9 +58,11 @@
 
 </details>
 
-### Codex（iTerm2 底部彩色状态栏）
+### Codex（当前会话原生底栏）
 
-Codex 的 Hook `systemMessage` 当前按普通消息显示 ANSI 色码。Token Tracker 的 Stop Hook 改为输出无色摘要；在 iTerm2 的当前 Codex 会话中运行 `tt statusbar split`，会在该窗格底部打开独立的两行真彩色状态栏。已有左右分屏时，底栏只占当前 Codex 窗格的宽度。用 `tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
+Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为状态栏。Token Tracker 的 Stop Hook 因此保持静默，只记录 sidebar 跳转所需的会话与终端映射。当前会话底栏使用 Codex 原生 `/statusline`，可选择项目、Git 分支、会话总 Token、5 小时额度、周额度、上下文和模型。底栏只有一行，窗格较窄时尾部字段可能省略；Codex 暂不支持将 Token Tracker 的自定义两行进度条嵌入原生底栏。
+
+如果确实需要完整两行彩色进度条，可在 iTerm2 中手动运行 `tt statusbar split` 打开独立底部窗格；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
 
 状态栏每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次；退出底部窗格可用 Ctrl-C。
 

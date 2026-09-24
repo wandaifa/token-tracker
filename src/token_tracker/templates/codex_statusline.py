@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""token-tracker Codex 状态摘要：Stop hook 输出无色消息，--direct 向独立终端输出两行真彩色状态。
+"""token-tracker Codex 状态摘要：Stop hook 静默记录终端映射，--direct 向终端输出两行真彩色状态。
 L1：[项目](分支 +A -D) | Total: <会话累计 token> | Cost: $<第三方 provider 会话成本> | Model: <模型>
 L2：Limit: 5h <bar> <%> (reset) | 7d <bar> <%> (reset) | <window> Ctx <bar> <%>
 数据：单次扫描当前会话同时取得 Total、逐请求成本和 5h/7d 限额；当前会话没有标准限额时，按
@@ -9,7 +9,6 @@ Model = Stop payload.model；会话按 transcript_path 精确定位、回退最�
 __version__ = "__STATUSLINE_HOOK_VERSION__"
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -266,8 +265,16 @@ def main():
     except Exception:
         payload = {}
 
+    direct = "--direct" in sys.argv
+    if not direct:
+        terminal_session_id = payload.get("session_id") or payload.get("thread_id")
+        if not isinstance(terminal_session_id, str) or not terminal_session_id:
+            snapshot, exact_session = _current_session(payload)
+            terminal_session_id = snapshot.session_id if snapshot and exact_session else ""
+        _record_terminal_map(terminal_session_id)
+        return
+
     snapshot, exact_session = _current_session(payload)
-    session_id = snapshot.session_id if snapshot else ""
     cwd = snapshot.cwd if snapshot else ""
     info = snapshot.info if snapshot else None
     model = snapshot.model if snapshot else ""
@@ -286,14 +293,6 @@ def main():
     except Exception:
         pass
 
-    payload_session_id = payload.get("session_id") or payload.get("thread_id")
-    terminal_session_id = session_id if exact_session else ""
-    if isinstance(payload_session_id, str) and payload_session_id:
-        session_id = payload_session_id
-        terminal_session_id = payload_session_id
-    direct = "--direct" in sys.argv
-    if not direct:
-        _record_terminal_map(terminal_session_id)
     cwd = payload.get("cwd") or cwd
     ctx = _ctx_pct(info) if info else None
     now_ts = int(datetime.now(timezone.utc).timestamp())
@@ -336,12 +335,7 @@ def main():
 
     lines = [" | ".join(x) for x in (line1, line2) if x]
     if lines:
-        if direct:
-            print("\n".join(lines))
-        else:
-            # Codex 的 systemMessage 是 UI 消息，不是 ANSI 终端。去色后保留可读摘要。
-            plain = [re.sub(r"\x1b\[[0-9;]*m", "", line) for line in lines]
-            print(json.dumps({"systemMessage": "\n" + "\n".join(plain)}))
+        print("\n".join(lines))
 
 
 if __name__ == "__main__":
