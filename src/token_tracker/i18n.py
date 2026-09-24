@@ -11,7 +11,7 @@ _STRINGS = {
         "agent_filter_conflict": "--claude / --codex / --kimi 互斥，只能指定其中一个",
         "agent_not_detected": "未检测到 {flag} 的使用数据，请先在该 agent 中使用后再查询",
         "sessions_limit_invalid": "会话条数必须是正整数，收到: {value}",
-        "available_cmds": "可用命令: status, daily, weekly, monthly, sessions, sidebar, theme, setup, unsetup, --version",
+        "available_cmds": "可用命令: status, daily, weekly, monthly, sessions, sidebar, statusbar, theme, setup, unsetup, --version",
         # --- sidebar（cli.py / ui/sidebar.py）---
         "sidebar_empty": "窗口期内没有活跃会话",
         "sidebar_waiting_prompt": "等待当前会话的第一条提示词…",
@@ -127,7 +127,7 @@ _STRINGS = {
         "agent_filter_conflict": "--claude, --codex and --kimi are mutually exclusive; please pick one",
         "agent_not_detected": "No usage data for {flag}; use it in that agent first, then query again",
         "sessions_limit_invalid": "Session count must be a positive integer, got: {value}",
-        "available_cmds": "Available commands: status, daily, weekly, monthly, sessions, sidebar, theme, setup, unsetup, --version",
+        "available_cmds": "Available commands: status, daily, weekly, monthly, sessions, sidebar, statusbar, theme, setup, unsetup, --version",
         # --- sidebar（cli.py / ui/sidebar.py）---
         "sidebar_empty": "No active sessions in the window",
         "sidebar_waiting_prompt": "Waiting for the first prompt in this session…",

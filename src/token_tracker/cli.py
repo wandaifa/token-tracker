@@ -484,6 +484,10 @@ def _handle_non_data_command(command: str, args: list[str]) -> bool:
     if command == "theme":
         cmd_theme(args)
         return True
+    if command == "statusbar":
+        from .codex_statusbar import main as statusbar_main
+
+        sys.exit(statusbar_main(args))
     if command == "setup":
         _run_setup_flow()
         return True

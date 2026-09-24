@@ -13,7 +13,7 @@ Custom StatusLine integration + CLI Dashboard — see token usage, cost, and rat
 ## Highlights
 
 - **Unified multi-agent tracking** — Claude Code + Codex + Kimi Code in one place, grouped by source
-- **Status line integration** — Claude Code via official StatusLine API; **Codex industry-first faux statusline** (hook-injected two-line truecolor status — bringing an official-unsupported capability to Codex); Kimi Code via the official `status_line` API
+- **Status line integration** — Claude Code via its official StatusLine API; Codex uses a plain-text Hook summary and a truecolor two-line pane in iTerm2; Kimi Code via its official `status_line` API
 - **Live sidebar** — `tt sidebar` shows all active sessions (Claude Code + Codex + Kimi Code); `$tt-sidebar` in Codex or `/skill:tt-sidebar` in Kimi Code opens a current-session-only pane on the right at one-third width
 - **Rate limit monitoring** — real-time 5h / 7d quota usage with reset countdown
 - **Multi-dimensional cost analysis** — per-session, daily, weekly, monthly cost breakdown
@@ -57,18 +57,18 @@ Built on the Claude Code official custom StatusLine API — **all data comes dir
 
 </details>
 
-### Codex (faux statusline — industry-first)
+### Codex (truecolor bottom pane in iTerm2)
 
-Codex doesn't yet support custom StatusLine. Token Tracker injects a **faux statusline** via a hook — after each turn completes, two truecolor status lines are appended to the response. **This is a rare implementation that brings a status line to Codex despite no official support.**
+Codex now displays ANSI codes from Hook `systemMessage` as plain text. Token Tracker's Stop Hook provides a colorless summary. Run `tt statusbar split` from the current Codex session in iTerm2 to open a separate, truecolor two-line pane below that session. In a tab already split left and right, the bottom pane spans only the current Codex pane. Use `tt statusbar watch <session-id> --once` to check a single render.
 
-![Codex StatusLine](assets/screenshot-statusline-codex.png)
+The pane checks the current session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in the bottom pane to exit.
 
 **Two-line layout**:
 
 - **L1** `[project](branch +A -D) | Total: <session tokens> | Model: <model reasoning>` — Total in orange, Model in red; third-party API providers (e.g. DeepSeek) have no subscription quota, so L1 also shows session Cost (estimated from built-in official rates using each request's timestamp and context tier)
 - **L2** `Limit: 5h <bar> % (reset <ttl>) | 7d <bar> % (reset <ttl>) | <window> Ctx <bar> %` — quota is read from the current session / same model_provider, so multiple accounts and providers never cross-contaminate; the `Limit:` prefix is hidden when no quota data exists
 
-Renders 24-bit truecolor, **does not enter the model context** (verified), and **follows the current theme** (same source as the CLI reports / CC status line; `tt theme` switches all three together). `tt unsetup` removes it.
+The pane renders 24-bit truecolor using the theme active when it starts. Reopen it after changing the theme. `tt unsetup` removes managed hooks; close any already-running bottom pane yourself.
 
 ### Kimi Code (official API)
 

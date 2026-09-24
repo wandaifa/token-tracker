@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""token-tracker Codex 伪 statusline（Stop hook）：每次回答后追加两行彩色 status，仿 CC statusline。
+"""token-tracker Codex 状态摘要：Stop hook 输出无色消息，--direct 向独立终端输出两行真彩色状态。
 L1：[项目](分支 +A -D) | Total: <会话累计 token> | Cost: $<第三方 provider 会话成本> | Model: <模型>
 L2：Limit: 5h <bar> <%> (reset) | 7d <bar> <%> (reset) | <window> Ctx <bar> <%>
 数据：单次扫描当前会话同时取得 Total、逐请求成本和 5h/7d 限额；当前会话没有标准限额时，按
@@ -9,6 +9,7 @@ Model = Stop payload.model；会话按 transcript_path 精确定位、回退最�
 __version__ = "__STATUSLINE_HOOK_VERSION__"
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -290,7 +291,9 @@ def main():
     if isinstance(payload_session_id, str) and payload_session_id:
         session_id = payload_session_id
         terminal_session_id = payload_session_id
-    _record_terminal_map(terminal_session_id)
+    direct = "--direct" in sys.argv
+    if not direct:
+        _record_terminal_map(terminal_session_id)
     cwd = payload.get("cwd") or cwd
     ctx = _ctx_pct(info) if info else None
     now_ts = int(datetime.now(timezone.utc).timestamp())
@@ -333,8 +336,12 @@ def main():
 
     lines = [" | ".join(x) for x in (line1, line2) if x]
     if lines:
-        # 开头加 \n：Codex 把 systemMessage 包成 "warning:" 开头，让 status 内容另起一行、与之分开
-        print(json.dumps({"systemMessage": "\n" + "\n".join(lines)}))
+        if direct:
+            print("\n".join(lines))
+        else:
+            # Codex 的 systemMessage 是 UI 消息，不是 ANSI 终端。去色后保留可读摘要。
+            plain = [re.sub(r"\x1b\[[0-9;]*m", "", line) for line in lines]
+            print(json.dumps({"systemMessage": "\n" + "\n".join(plain)}))
 
 
 if __name__ == "__main__":

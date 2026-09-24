@@ -29,8 +29,6 @@ Thumbs.db
 .codex/
 .agents/
 .tt-sidebar-*.fifo
-AGENTS.md
-CLAUDE.md
 pricing_cache.json
 docs/
 

@@ -5,6 +5,10 @@
 
 ## 当前阶段
 
+个人 fork 与上游 `main` 已同步；本地开发版 `0.6.0` 已把 Codex Hook 摘要去色，并新增 iTerm2 当前会话窗格底部的两行真彩色状态栏。代码、真实终端和测试均已验证；用户级 pipx 安装与 Hook 更新尚未执行，GitHub fork 尚未推送本地改动。已有左右分屏时，底栏只占当前 Codex 窗格宽度。
+
+## 上游进度存档
+
 **2026-09-10 00:09 GPT 模型命名空间识别已修复（未发版）**：`chatgpt/gpt-5.6-sol` 原先无法匹配已有定价并按 $0 计；现支持 `chatgpt/gpt-*`、`openai/gpt-*` 缺少独立报价时复用裸模型解析，日期后缀和长上下文阶梯价保持一致。完整 ID 及其变体报价优先，完整 ID 精确价也优先于已缓存的裸模型兜底；未知第三方、嵌套前缀和非 GPT 模型不剥除。完整与英文 dumb terminal pytest 各 **416 passed**，Ruff、mypy 和 diff 检查通过。
 
 **2026-09-09 19:55 `0.5.7` 已发布 PyPI（源码与 tag 已 push）**：包含 Astra / Fable 5.1 定价、Codex 缓存写入计价、此前模型价格校准与扫描性能优化。发布 commit `30a7892`、annotated tag `v0.5.7` 已推送；完整 pytest 与英文 dumb terminal 各 **395 passed**，Ruff、mypy（41 个源文件）、锁文件和 diff 检查通过。从提交快照构建 sdist / wheel，Twine check 通过，wheel 的 44 个包文件与提交逐项一致。PyPI 元数据和实际下载产物的 SHA-256 均与本地一致（wheel `3f4b6d14…3d4a`、sdist `09294a28…452a`）；官方索引无缓存隔离安装后 `tt --version` 正确输出 0.5.7。用户级工具仍为旧安装，未自动升级；原有规范迁移改动和品牌素材保持未提交。
@@ -81,7 +85,11 @@
 
 `0.4.1` 已发布 PyPI（2026-06-23，https://pypi.org/project/token-tracker/0.4.1/ ），打了 `v0.4.1` tag。**注**：`0.4.0` 之前打过 tag 但实际上**已上 PyPI**（之前 ROADMAP 写错）。
 
-## 已完成（均已发布并验证）
+## 已完成
+
+- 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
+- 2026-09-24：定位 Codex Stop Hook 显示问题与可行界面：模板把 ANSI 配色写入 `systemMessage`，当前 Codex 按 Hook 消息展示；现有 Textual sidebar 的直接终端输出可产生 ANSI 色彩。仅完成诊断，没有声称界面集成已经实测。
+- 2026-09-24：本地开发版升至 `0.6.0`；Stop Hook 输出无色两行摘要，`tt statusbar split` 在 iTerm2 当前 Codex 窗格底部打开独立彩色状态栏，直接复用同一份渲染模板并按会话 ID 读取 JSONL。真实会话的单次渲染、窗格彩色截图和 3 行布局已核验；421 项测试、Ruff、mypy 与锁文件版本检查通过。用户级安装仍待执行。
 
 **核心能力**
 - 状态栏：Claude Code 三行布局（会话时长 / Cache 命中率 / Token 增量 / 重置倒计时 / Git 分支）+ Codex 官方 `status_line`；主题系统（mocha / dracula / default）；宽度自适应 + 终端尺寸实时检测
@@ -140,7 +148,11 @@
 - **`tt sessions` 取数纠错 + codex 补真实 duration**（2026-06-22，已提交 `25fbfb7`）：原「全量按 cost 倒序取前 20」致史上高 cost 会话恒久霸榜、新会话和低成本 agent（codex）永远进不了榜 → 改为**先按时间取最近 N 条、再按 cost（或 `--sort`）展示**。过滤口径从活跃时长 `active_minutes` 改为会话跨度 `duration_minutes`（cc + codex 统一）。codex 每会话仅 1 条汇总 entry、原 duration 恒为 0 被全滤；`UsageEntry` 加 `session_end` 字段、`adapters/codex.py` 取末事件 timestamp 填入、`aggregate_sessions` 据此算真实跨度（claude 留 None 走多条 entry 原逻辑）。补 `session_end` 解析 + 单条 entry 真实跨度两组用例。
 - **国产模型识别 + cost（七家）**（2026-06-24）：`cost.py` `_fallback_pricing` 补 30 个国产 model 内置价 + `_FAMILY_FALLBACK` 加 10 条系列前缀兜底，`format.py` `MODEL_SHORT` 配套短名，覆盖 Kimi/Moonshot、智谱 GLM、阿里 Qwen、火山 Doubao、DeepSeek、MiniMax、小米 MiMo。**定价口径**：国产按各家中国站人民币价 ÷7.1 折 USD（与 CC/Codex 同口径）；**GLM 例外**用 z.ai 国际站官方 USD（中国站含缓存完整价是 SPA、官方页抓不到）；阶梯定价模型（Qwen3-Coder / Doubao）统一取 0-32K 基础档。七家官方页 2026-06 核实并修正草案（`kimi-k2-instruct`/`turbo` 已 EOL → 改 K2.7/K2.6/K2.5；DeepSeek 进 V4、chat/reasoner 映射 v4-flash；小米 MiMo 与 DeepSeek 同价、Pro 主攻 agentic 编程）；已下线旧 id / 未来新版本走系列兜底不归零。新增 `_cny`/`_usd` 汇率 helper（汇率常量 `_CNY_PER_USD=7.1` 集中）。**另补国外**：xAI Grok 官方定价（`grok-4.3` / `grok-build-0.1` / `grok-code-fast-1`，litellm bare 零收录会归 $0；2026-05-15 退役 slug 靠系列兜底按官方路由对齐 grok-4.3 / build-0.1）+ Gemini 8 个短名（litellm 价已对、只补显示名不入兜底）。`test_cost.py` 共 +10 用例。
 
-## 待办 / 计划
+## 进行中
+
+- 将本地 `0.6.0` 安装到现有 pipx 环境并同步用户级 Codex Hook，随后在用户日常 Codex 窗口复验无乱码；此步骤涉及工作项目目录外的个人文件，等待授权。
+
+## 待办
 
 - **Codex 非标准服务档计价（待确认日志字段）**：Astra 官方 Fast 为适用标准价的 2 倍，Flex 为 0.5 倍；当前抽查的 3 个真实 Astra 会话无可核实的 `service_tier`，继续按标准价估算。后续以逐请求实际生效档位为准，不从当前用户配置或模型名推断整段历史的倍率。
 - **`tt sidebar` 点击跳转补 Ghostty（未启动）**：自动分屏已支持 Ghostty（2026-08-03），但总览「点头行跳窗格」仍只有 tmux（`TMUX_PANE` 映射）/ iTerm2（`ITERM_SESSION_ID` 映射）——三套 statusline 模板只采集这两类，`ui/sidebar_app._jump_argvs` 也只认这两类，Ghostty 会话头行当前不可点。Ghostty 无 per-pane 环境变量，statusline 渲染期不宜调 osascript（300ms 预算）；可行路径是点击时懒算：AppleScript `every terminal whose working directory is <会话 cwd>` 匹配后 `focus`（多窗格同项目时有歧义，需定优先级，如取 front window 首个匹配），或推动 Ghostty 暴露 surface id 环境变量后再走精确映射。README 对点击跳转的「iTerm2 / tmux」描述在补齐前保持现状（是准确描述，非遗漏）。
@@ -158,9 +170,13 @@
 
 ## 阻塞
 
+- iTerm2 的 AppleScript 水平分屏作用于单个 session；当前标签页已有左右分屏时，无法通过该接口生成跨两个窗格的整宽底栏。若必须整宽，需要调整标签页现有窗格布局。
 - 纯 osascript 无法在 iTerm2 原生全屏下调整 pane 列宽；当前安全回滚并提示退出全屏，若以后要求原生全屏 1/3，需重新评估 Python API fallback 或 macOS Accessibility 方案。
 
 ## 最近验证
+
+- 2026-09-24：本地 `0.6.0` 使用当前 Codex 会话 JSONL 渲染出两行真彩色状态；iTerm2 真机分屏、可见文本和截图确认当前窗格底部显示，手动调整并核验 3 行布局。相同会话的 Hook JSON 摘要为两行且不含 ANSI；沙箱外 `.venv/bin/python -m pytest` 为 `421 passed`，Ruff 全过，mypy 42 个源文件无错误，`pyproject.toml` 与 `uv.lock` 均为 `0.6.0`。沙箱内单个依赖 `ps` 的既有测试因权限失败，沙箱外复核通过。
+- 2026-09-24：`gh api` 核对 `wandaifa/token-tracker` 与 `stormzhang/token-tracker` 的 `main` 均为 `85a6b573bb53e8181772abd5f590e0383f1bb28a`；本地 `origin` / `upstream` 指向正确，`codex --version` 为 `0.156.1`。源码 `templates/codex_statusline.py` 末尾将带 ANSI 的两行放入 `systemMessage`；官方 Hook 文档将它定义为 UI 警告消息，`tui.status_line` 仅接受内置项目标识符。用已安装 Rich 在直接终端输出 `render_sidebar([])`，确认包含 ANSI 控制码；iTerm2 官方脚本文档支持横向分屏。尚未做新的状态栏界面真实验收。本机没有 pytest / ruff / mypy 的项目开发环境，未运行测试。官方依据：https://learn.chatgpt.com/docs/hooks 、https://learn.chatgpt.com/docs/config-file/config-reference 与 https://iterm2.com/documentation-scripting.html 。
 
 - **2026-09-10 00:09**：**GPT 命名空间定价修复**。先复现 `chatgpt/`、`openai/` 前缀导致定价归零，再补最小解析规则；新增 21 项回归覆盖两个前缀、Sol / Astra、日期后缀、272K 上下界、完整 ID 报价优先、缓存兜底后新增精确价，以及未知／嵌套／空前缀边界。完整 pytest 和英文 dumb terminal 各 416 passed，Ruff 全过、mypy 41 个源文件无错误、`git diff --check` 通过。只读加载本机现有价格缓存，确认 `chatgpt/gpt-5.6-sol` 命中 `gpt-5.6-sol`；未修改用户级安装或缓存。
 

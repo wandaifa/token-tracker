@@ -208,6 +208,36 @@ def test_codex_statusline_render_injects_version():
     compile(rendered, "<codex-statusline>", "exec")
 
 
+def test_codex_statusline_hook_plain_and_terminal_direct_colored(tmp_path):
+    script = tmp_path / "codex-statusline.py"
+    script.write_text(hooks._render_codex_statusline_hook(), encoding="utf-8")
+    rollout = tmp_path / "session.jsonl"
+    rollout.write_text("\n".join(json.dumps(row) for row in [
+        {"type": "session_meta", "payload": {"id": "session-1", "cwd": str(tmp_path)}},
+        {"type": "turn_context", "payload": {"model": "gpt-6-sol", "effort": "high"}},
+        {"type": "event_msg", "payload": {"type": "token_count", "info": {
+            "total_token_usage": {"total_tokens": 1200000, "input_tokens": 1000000, "output_tokens": 200000},
+            "last_token_usage": {"input_tokens": 50000},
+            "model_context_window": 258000,
+        }}},
+    ]) + "\n", encoding="utf-8")
+    payload = json.dumps({"session_id": "session-1", "transcript_path": str(rollout), "cwd": str(tmp_path)})
+    env = {**os.environ, "HOME": str(tmp_path), "ITERM_SESSION_ID": "w0t0:source"}
+
+    hooked = subprocess.run([sys.executable, str(script)], input=payload, text=True,
+                            capture_output=True, check=True, env=env)
+    message = json.loads(hooked.stdout)["systemMessage"]
+    assert "Total: 1.2M" in message and "Model: gpt-6-sol high" in message
+    assert "\x1b" not in message
+    direct = subprocess.run([sys.executable, str(script), "--direct"], input=payload, text=True,
+                            capture_output=True, check=True, env=env)
+    assert "\x1b[" in direct.stdout and "Total: 1.2M" in direct.stdout
+    assert len(direct.stdout.splitlines()) == 2
+    # 辅助窗格不能覆盖源窗格的 session→terminal 映射。
+    term_map = json.loads((tmp_path / ".config/token-tracker/tt-terminal-map.json").read_text())
+    assert term_map["_terminal_map"]["session-1"]["iterm"] == "w0t0:source"
+
+
 def test_codex_statusline_records_terminal_map_without_touching_cc_status(tmp_path):
     # Codex Stop hook 从精确 transcript 读 session_meta.id，采集当前终端环境并按 session 合并；
     # 单独落 tt-terminal-map.json，不能覆盖 CC 心跳/rate limit 使用的 tt-status.json。
