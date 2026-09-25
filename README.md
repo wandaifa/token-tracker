@@ -13,7 +13,7 @@
 ## 功能亮点
 
 - **多 Agent 统一追踪** — Claude Code + Codex + Kimi Code 统一读取，多 Agent 按来源分组
-- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex Hook 输出无色摘要，iTerm2 底部窗格显示两行真彩色状态；Kimi Code 用官方 `status_line` 接口
+- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex 原生单行底栏或 tmux 同窗格底部两行状态；Kimi Code 用官方 `status_line` 接口
 - **实时侧边栏** — `tt sidebar` 窄窗格常驻面板：全部活跃会话一屏总览（状态灯 + 最近提示词 + 「下一步」建议），点击会话直达对应 iTerm2 / tmux 窗格
 - **当前会话自动分屏** — Codex 中显式执行 `$tt-sidebar`，在原会话右侧自动打开 1/3 宽度的独立提示词侧边栏
 - **限额监控** — 实时 5h / 7d 配额百分比 + 重置倒计时
@@ -64,9 +64,11 @@ Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为状态栏�
 
 原生 `used-tokens` 使用 Codex 自己的口径：输入扣除缓存读取后再加输出；Token Tracker 的 `Total` 包含缓存读取，因此同一会话的两个数字可能不同。[Codex 0.156.1 源码](https://github.com/openai/codex/blob/rust-v0.156.1/codex-rs/tui/src/token_usage.rs)
 
-如果确实需要完整两行彩色进度条，可在 iTerm2 中手动运行 `tt statusbar split` 打开独立底部窗格；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
+如果需要在当前终端窗格底部常驻完整两行状态，可先进入 tmux，再运行 `tt statusbar tmux`，随后在同一个 tmux 会话中启动或恢复 Codex。Codex 首次回答后，Stop Hook 会把会话绑定到当前 tmux 窗格；状态栏按活动窗格显示对应会话。该配置只作用于当前 tmux 会话，不改个人 tmux 配置文件。退出 tmux 后，下次新建 tmux 会话需再次运行此命令。当前已在 tmux 外运行的 Codex 会话无法直接迁入，需在 tmux 内恢复。
 
-状态栏每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次；退出底部窗格可用 Ctrl-C。
+已有 iTerm2 分屏方案仍可手动运行 `tt statusbar split`；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
+
+tmux 状态栏每 10 秒刷新一次；独立 iTerm2 底部窗格每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次，退出可用 Ctrl-C。
 
 **两行布局**：
 

@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 已推送本地 `0.6.1` 修复，现有 pipx 已从个人 fork 的提交安装 `0.6.1`。Codex 当前会话使用原生单行底栏显示状态，Stop Hook 静默保留 sidebar 终端映射；Codex 0.156.1 真机及安装后的 CLI 均已验证。原生 `used-tokens` 扣除缓存读取，与 Token Tracker 含缓存的 `Total` 口径不同。
+个人 fork 的 Codex 状态栏现增加 tmux 同窗格底部两行方案，代码版本 `0.6.2`；当前 Codex 会话仍在 tmux 外，真实 Codex 会话在 tmux 内的数据展示待验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
 
 ## 上游进度存档
 
@@ -92,6 +92,7 @@
 - 2026-09-24：本地开发版升至 `0.6.0`；Stop Hook 输出无色两行摘要，`tt statusbar split` 在 iTerm2 当前 Codex 窗格底部打开独立彩色状态栏，直接复用同一份渲染模板并按会话 ID 读取 JSONL。真实会话的单次渲染、窗格彩色截图和 3 行布局已核验；421 项测试、Ruff、mypy 与锁文件版本检查通过。用户级安装仍待执行。
 - 2026-09-25：本地开发版升至 `0.6.1`；Stop Hook 不再输出摘要，只记录终端映射，payload 已含会话 ID 时无需扫描 JSONL；Codex 原生底栏配置加入 Git 分支和会话总 Token，并把模型、额度放在前面。Codex 0.156.1 真机 TUI 证实底栏在同一窗格输入框下，80 列时尾部字段会被省略；真实回答后未出现 Token Tracker Hook 消息，恢复会话后底栏显示 `18.8K used`。完整 pytest、Ruff、mypy 和真实旧 pipx 解释器执行新 Hook 均通过；用户级 pipx 仍待更新。
 - 2026-09-25：个人 fork 的 `main` 推送至 `b41fba1a1c9a5d184845c4ba147b06e36465da26`，现有 pipx 从该 fork 的同一提交安装 `0.6.1`；`tt --version`、pipx 安装来源、Hook 2.1 与 `needs_update=False` 均独立核对。安装后 `tt statusbar watch --once` 能读取真实会话；同会话原生底栏 `18.8K used` 与 Token Tracker `Total: 30k` 的差额为缓存读取 11,520 Token，Codex 0.156.1 源码确认原生 `used-tokens` 使用扣除缓存的口径。
+- 2026-09-25：tmux 3.7c 已安装；`tt statusbar tmux` 可在当前 tmux 会话底部配置两行状态，每行按活动窗格映射读取 Codex 会话，并把原有 ANSI 配色转换为 tmux 样式。真实 tmux 终端确认两行区域及样式显示；全套 423 项测试、Ruff、mypy 通过。当前 Codex 会话仍在 tmux 外，需恢复到 tmux 内验收真实会话数据。
 
 **核心能力**
 - 状态栏：Claude Code 三行布局（会话时长 / Cache 命中率 / Token 增量 / 重置倒计时 / Git 分支）+ Codex 官方 `status_line`；主题系统（mocha / dracula / default）；宽度自适应 + 终端尺寸实时检测
@@ -152,6 +153,7 @@
 
 ## 进行中
 
+- 在 tmux 内恢复真实 Codex 会话，核对两行内容、颜色与活动窗格切换后的数据归属。
 
 
 ## 待办
@@ -177,6 +179,7 @@
 
 ## 最近验证
 
+- 2026-09-25：Homebrew 安装 tmux 3.7c；临时 tmux 会话中 `status=2`、两行 `status-format` 与 10 秒刷新配置均读回一致，PTY 输出显示两行区域和真彩色标记转换后的红色文本。`tt statusbar watch <当前会话> --once` 从真实 Codex JSONL 输出完整两行。沙箱外 `.venv/bin/python -m pytest` 为 423 passed，Ruff、mypy、`git diff --check` 通过；tmux 内 Codex 真机展示尚待验收。
 - 2026-09-25：`gh api` 独立核对个人 fork `main` 为 `b41fba1a1c9a5d184845c4ba147b06e36465da26`；pipx 元数据指向 `git+https://github.com/wandaifa/token-tracker.git@b41fba1a1c9a5d184845c4ba147b06e36465da26` 且版本 `0.6.1`，`tt --version` 一致。安装包的 Hook 版本与用户级脚本均为 2.1，`needs_update=False`；真实会话 `tt statusbar watch --once` 输出项目、模型、额度和总 Token。官方 0.156.1 源码的 `blended_total()` 为非缓存输入加输出，解释原生 `18.8K used` 与 Token Tracker 原始 `30k` 的差异。
 - 2026-09-25：Codex 0.156.1 在已信任项目目录真正启动，底栏显示于同一会话输入框下；80 列输出显示项目、Git 分支、额度等，尾部被截断，故将模型与额度提前。发送一次简短请求后未见 Token Tracker Hook 摘要；退出并恢复同一会话，原生底栏实际显示 `18.8K used`。本机 `config.toml` 经 `tomllib` 解析出 7 个合法内置字段。新 Hook 经旧 pipx Python 真实执行，stdout/stderr 均为空且模拟 iTerm 会话映射写入成功；本机 Hook 版本 2.1。完整 pytest 在可读取 `ps` 的环境通过，Ruff 全过，mypy 42 个源文件无错误，`git diff --check` 通过。沙箱内现有 `test_alive_pids_own_process_and_start_time_guard` 因 `ps` 受限失败，沙箱外定向与全量测试均通过。
 - 2026-09-24：本地 `0.6.0` 使用当前 Codex 会话 JSONL 渲染出两行真彩色状态；iTerm2 真机分屏、可见文本和截图确认当前窗格底部显示，手动调整并核验 3 行布局。相同会话的 Hook JSON 摘要为两行且不含 ANSI；沙箱外 `.venv/bin/python -m pytest` 为 `421 passed`，Ruff 全过，mypy 42 个源文件无错误，`pyproject.toml` 与 `uv.lock` 均为 `0.6.0`。沙箱内单个依赖 `ps` 的既有测试因权限失败，沙箱外复核通过。

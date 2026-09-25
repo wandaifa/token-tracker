@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -12,10 +13,12 @@ import time
 from pathlib import Path
 
 from .adapters import codex
+from .config import TERMINAL_MAP_FILE
 from .hooks import _render_codex_statusline_hook
 
 _SPLIT_OK = "tt_statusbar_split_ok"
 _POLL_SECONDS = 5
+_ANSI = re.compile(r"\x1b\[([0-9;]*)m")
 _APPLESCRIPT = r"""
 on run argv
     set targetId to item 1 of argv
@@ -94,6 +97,74 @@ def _render(script: str, session_id: str, path: Path) -> str:
     return result.stdout.rstrip("\n")
 
 
+def _tmux_markup(value: str) -> str:
+    """将现有真彩色状态文本转换为 tmux 状态栏样式。"""
+    parts = []
+    pos = 0
+    for match in _ANSI.finditer(value):
+        parts.append(value[pos:match.start()].replace("#", "##"))
+        codes = match.group(1).split(";")
+        if codes[:2] == ["38", "2"] and len(codes) == 5:
+            parts.append("#[fg=#{:02x}{:02x}{:02x}]".format(*(int(c) for c in codes[2:])))
+        elif "0" in codes or codes == [""]:
+            parts.append("#[default]")
+        elif "1" in codes:
+            parts.append("#[bold]")
+        elif "2" in codes:
+            parts.append("#[dim]")
+        pos = match.end()
+    parts.append(value[pos:].replace("#", "##"))
+    return "".join(parts)
+
+
+def _session_for_pane(pane: str) -> str | None:
+    try:
+        mappings = json.loads(Path(TERMINAL_MAP_FILE).read_text(encoding="utf-8")).get("_terminal_map", {})
+        for session_id, terminal in reversed(list(mappings.items())):
+            if terminal.get("tmux") == pane and _session_path(session_id) is not None:
+                return session_id
+    except (OSError, ValueError, AttributeError):
+        pass
+    return None
+
+
+def tmux_line(index: int, pane: str) -> int:
+    session_id = _session_for_pane(pane)
+    path = _session_path(session_id) if session_id else None
+    if path is None or session_id is None:
+        print("等待当前 Codex 会话首次回答…" if index == 0 else "")
+        return 0
+    try:
+        lines = _render(_render_codex_statusline_hook(), session_id, path).splitlines()
+        print(_tmux_markup(lines[index]) if index < len(lines) else "")
+    except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError):
+        print("状态数据暂不可用" if index == 0 else "")
+    return 0
+
+
+def tmux() -> int:
+    pane = os.environ.get("TMUX_PANE")
+    if not pane:
+        print("请先在 tmux 中运行此命令。", file=sys.stderr)
+        return 1
+    for index in range(2):
+        command = shlex.join([sys.executable, "-B", "-m", "token_tracker.codex_statusbar", "tmux-line", str(index)])
+        value = f"#({command} #{{pane_id}})"
+        result = subprocess.run(["tmux", "set-option", "-t", pane, f"status-format[{index}]", value],
+                                capture_output=True, text=True)
+        if result.returncode:
+            print(result.stderr.strip(), file=sys.stderr)
+            return 1
+    for option, value in (("status", "2"), ("status-style", "bg=default,fg=default"),
+                          ("status-interval", "10")):
+        result = subprocess.run(["tmux", "set-option", "-t", pane, option, value], capture_output=True, text=True)
+        if result.returncode:
+            print(result.stderr.strip(), file=sys.stderr)
+            return 1
+    print("当前 tmux 会话底部已配置两行状态栏；Codex 首次回答后显示数据。")
+    return 0
+
+
 def watch(session_id: str, once: bool = False) -> int:
     script = _render_codex_statusline_hook()
     path = _session_path(session_id)
@@ -153,11 +224,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Codex 彩色状态栏")
     subparsers = parser.add_subparsers(dest="action", required=True)
     subparsers.add_parser("split")
+    subparsers.add_parser("tmux")
+    tmux_row = subparsers.add_parser("tmux-line")
+    tmux_row.add_argument("index", type=int, choices=(0, 1))
+    tmux_row.add_argument("pane")
     viewer = subparsers.add_parser("watch")
     viewer.add_argument("session_id")
     viewer.add_argument("--once", action="store_true")
     args = parser.parse_args(argv)
-    return split() if args.action == "split" else watch(args.session_id, once=args.once)
+    if args.action == "split":
+        return split()
+    if args.action == "tmux":
+        return tmux()
+    if args.action == "tmux-line":
+        return tmux_line(args.index, args.pane)
+    return watch(args.session_id, once=args.once)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ Custom StatusLine integration + CLI Dashboard — see token usage, cost, and rat
 ## Highlights
 
 - **Unified multi-agent tracking** — Claude Code + Codex + Kimi Code in one place, grouped by source
-- **Status line integration** — Claude Code via its official StatusLine API; Codex uses a plain-text Hook summary and a truecolor two-line pane in iTerm2; Kimi Code via its official `status_line` API
+- **Status line integration** — Claude Code via its official StatusLine API; Codex uses its native single-line footer or a two-line tmux status bar in the same terminal pane; Kimi Code via its official `status_line` API
 - **Live sidebar** — `tt sidebar` shows all active sessions (Claude Code + Codex + Kimi Code); `$tt-sidebar` in Codex or `/skill:tt-sidebar` in Kimi Code opens a current-session-only pane on the right at one-third width
 - **Rate limit monitoring** — real-time 5h / 7d quota usage with reset countdown
 - **Multi-dimensional cost analysis** — per-session, daily, weekly, monthly cost breakdown
@@ -57,18 +57,18 @@ Built on the Claude Code official custom StatusLine API — **all data comes dir
 
 </details>
 
-### Codex (truecolor bottom pane in iTerm2)
+### Codex (native footer or two-line tmux status bar)
 
-Codex now displays ANSI codes from Hook `systemMessage` as plain text. Token Tracker's Stop Hook provides a colorless summary. Run `tt statusbar split` from the current Codex session in iTerm2 to open a separate, truecolor two-line pane below that session. In a tab already split left and right, the bottom pane spans only the current Codex pane. Use `tt statusbar watch <session-id> --once` to check a single render.
+Token Tracker's Stop Hook stays silent and records the session-to-terminal mapping. Codex's native footer shows a single line. For two persistent lines in the same terminal pane, enter tmux, run `tt statusbar tmux`, then start or resume Codex in that tmux session. The first Codex response maps the session to the active pane. This setting affects only the current tmux session; run it again in a new one. An already-running Codex session outside tmux must be resumed inside tmux.
 
-The pane checks the current session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in the bottom pane to exit.
+The tmux bar refreshes every 10 seconds. The older iTerm2 split-pane option remains available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
 
 **Two-line layout**:
 
 - **L1** `[project](branch +A -D) | Total: <session tokens> | Model: <model reasoning>` — Total in orange, Model in red; third-party API providers (e.g. DeepSeek) have no subscription quota, so L1 also shows session Cost (estimated from built-in official rates using each request's timestamp and context tier)
 - **L2** `Limit: 5h <bar> % (reset <ttl>) | 7d <bar> % (reset <ttl>) | <window> Ctx <bar> %` — quota is read from the current session / same model_provider, so multiple accounts and providers never cross-contaminate; the `Limit:` prefix is hidden when no quota data exists
 
-The pane renders 24-bit truecolor using the theme active when it starts. Reopen it after changing the theme. `tt unsetup` removes managed hooks; close any already-running bottom pane yourself.
+The tmux bar converts the current theme's 24-bit colors to tmux status styles. Run `tt statusbar tmux` again after changing themes. `tt unsetup` removes managed hooks; an already-running tmux status bar or iTerm2 pane remains until its session exits.
 
 ### Kimi Code (official API)
 

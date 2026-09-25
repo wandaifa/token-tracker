@@ -61,3 +61,38 @@ def test_once_missing_session_does_not_fall_back_to_other_thread(tmp_path, monke
 
     assert codex_statusbar.watch("missing", once=True) == 2
     assert "找不到当前 Codex 会话文件" in capsys.readouterr().err
+
+
+def test_tmux_line_uses_active_pane_mapping(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(codex_statusbar.codex, "SESSIONS_DIR", str(tmp_path))
+    mapping = tmp_path / "tt-terminal-map.json"
+    mapping.write_text(json.dumps({"_terminal_map": {
+        "other": {"tmux": "%1"}, "thread-1": {"tmux": "%2"}, "kimi-session": {"tmux": "%2"},
+    }}), encoding="utf-8")
+    monkeypatch.setattr(codex_statusbar, "TERMINAL_MAP_FILE", str(mapping))
+    (tmp_path / "rollout-thread-1.jsonl").write_text("", encoding="utf-8")
+    monkeypatch.setattr(codex_statusbar, "_render", lambda script, session_id, path: "\x1b[38;2;255;0;16mA#B\x1b[0m\nsecond")
+
+    assert codex_statusbar.tmux_line(0, "%2") == 0
+    assert capsys.readouterr().out == "#[fg=#ff0010]A##B#[default]\n"
+    assert codex_statusbar.tmux_line(1, "%2") == 0
+    assert capsys.readouterr().out == "second\n"
+    assert codex_statusbar.tmux_line(0, "%9") == 0
+    assert "等待当前 Codex" in capsys.readouterr().out
+
+
+def test_tmux_configures_two_rows_for_current_pane(monkeypatch, capsys):
+    monkeypatch.setenv("TMUX_PANE", "%3")
+    run = MagicMock(return_value=subprocess.CompletedProcess([], 0, "", ""))
+    monkeypatch.setattr(codex_statusbar.subprocess, "run", run)
+
+    assert codex_statusbar.tmux() == 0
+    commands = [call.args[0] for call in run.call_args_list]
+    assert len(commands) == 5
+    assert commands[0][0:4] == ["tmux", "set-option", "-t", "%3"]
+    assert commands[0][4] == "status-format[0]" and "tmux-line 0 #{pane_id}" in commands[0][5]
+    assert commands[1][4] == "status-format[1]" and "tmux-line 1 #{pane_id}" in commands[1][5]
+    assert commands[2][-2:] == ["status", "2"]
+    assert commands[3][-2:] == ["status-style", "bg=default,fg=default"]
+    assert commands[4][-2:] == ["status-interval", "10"]
+    assert "两行状态栏" in capsys.readouterr().out
