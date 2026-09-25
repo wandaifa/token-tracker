@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 Codex 状态栏已在当前 Codex 的 tmux 会话中真实显示两行内容；`0.6.3` 为两行文字加左留白和底部空白行，已推送并从个人 fork 安装到 pipx，当前 tmux 会话已应用，视觉排版待验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
+个人 fork 的 Codex 状态栏 `0.6.3` 已推送并从个人 fork 安装到 pipx；当前 Codex 的 tmux 会话中，两行彩色状态与原生状态行左侧对齐，底部空白行经用户截图验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
 
 ## 上游进度存档
 
@@ -94,6 +94,7 @@
 - 2026-09-25：个人 fork 的 `main` 推送至 `b41fba1a1c9a5d184845c4ba147b06e36465da26`，现有 pipx 从该 fork 的同一提交安装 `0.6.1`；`tt --version`、pipx 安装来源、Hook 2.1 与 `needs_update=False` 均独立核对。安装后 `tt statusbar watch --once` 能读取真实会话；同会话原生底栏 `18.8K used` 与 Token Tracker `Total: 30k` 的差额为缓存读取 11,520 Token，Codex 0.156.1 源码确认原生 `used-tokens` 使用扣除缓存的口径。
 - 2026-09-25：tmux 3.7c 已安装；`tt statusbar tmux` 可在当前 tmux 会话底部配置两行状态，每行按活动窗格映射读取 Codex 会话，并把原有 ANSI 配色转换为 tmux 样式。真实 tmux 终端确认两行区域及样式显示；全套 423 项测试、Ruff、mypy 通过。当前 Codex 会话仍在 tmux 外，需恢复到 tmux 内验收真实会话数据。
 - 2026-09-25：真实 Codex 会话已恢复到 tmux，Stop Hook 将同一会话映射到 `%0`；`tt statusbar tmux-line` 在当前窗格读出项目、Total、模型、5h、7d、Ctx 和 tmux 配色标记。用户截图确认两行内容在 Codex 输入框下可见。
+- 2026-09-25：`0.6.3` 在当前 Codex 的 tmux 会话完成截图验收：两行左侧留白与原生状态行起点对齐，第三个空白终端行提供底部间距；版本已从个人 fork 安装到 pipx。
 
 **核心能力**
 - 状态栏：Claude Code 三行布局（会话时长 / Cache 命中率 / Token 增量 / 重置倒计时 / Git 分支）+ Codex 官方 `status_line`；主题系统（mocha / dracula / default）；宽度自适应 + 终端尺寸实时检测
@@ -154,7 +155,7 @@
 
 ## 进行中
 
-- 对 `0.6.3` 的两字符左留白与底部空白行做截图视觉验收；当前 tmux 配置已读回，尚未取得修改后的画面。
+
 
 
 ## 待办
@@ -180,6 +181,7 @@
 
 ## 最近验证
 
+- 2026-09-25：用户提供 `0.6.3` 当前会话截图：原生状态行与 Token Tracker 两行左侧对齐；Token Tracker 第二行下方可见一行空白，再到 iTerm2 状态栏。截图显示 Total、Model、5h、7d、Ctx 与彩色进度条均正常。
 - 2026-09-25：用户截图确认 `0.6.2` 在 tmux 内显示原生单行下方的两行彩色状态；同一会话 Hook 映射为 `%0`，两行 CLI 输出均有真实数据。`0.6.3` 将 `status-format[0/1]` 前加两个空格、`status-format[2]` 置空且状态区设为 3 行；完整 pytest 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `327dfc4585198922be55ba2749cc939a378dea44` 已推送个人 fork，pipx 从该提交安装 `0.6.3`，当前 tmux 会话用安装版重新配置，读回确认为两行内容加一行底部留白；新间距的截图视觉验收待做。
 - 2026-09-25：Homebrew 安装 tmux 3.7c；临时 tmux 会话中 `status=2`、两行 `status-format` 与 10 秒刷新配置均读回一致，PTY 输出显示两行区域和真彩色标记转换后的红色文本。`tt statusbar watch <当前会话> --once` 从真实 Codex JSONL 输出完整两行。沙箱外 `.venv/bin/python -m pytest` 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `26ebff57d2dbdfcceb32015843678ef01b7ac2c2` 已推送个人 fork，pipx 从同一提交安装 `0.6.2`；已安装版本在真实 tmux 会话写出两行配置并从当前会话 JSONL 渲染出完整两行，tmux 内 Codex 真机展示尚待验收。
 - 2026-09-25：`gh api` 独立核对个人 fork `main` 为 `b41fba1a1c9a5d184845c4ba147b06e36465da26`；pipx 元数据指向 `git+https://github.com/wandaifa/token-tracker.git@b41fba1a1c9a5d184845c4ba147b06e36465da26` 且版本 `0.6.1`，`tt --version` 一致。安装包的 Hook 版本与用户级脚本均为 2.1，`needs_update=False`；真实会话 `tt statusbar watch --once` 输出项目、模型、额度和总 Token。官方 0.156.1 源码的 `blended_total()` 为非缓存输入加输出，解释原生 `18.8K used` 与 Token Tracker 原始 `30k` 的差异。
