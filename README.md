@@ -68,7 +68,7 @@ Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为状态栏�
 
 已有 iTerm2 分屏方案仍可手动运行 `tt statusbar split`；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
 
-tmux 状态栏每 10 秒刷新一次；独立 iTerm2 底部窗格每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次，退出可用 Ctrl-C。
+tmux 状态栏每 10 秒刷新一次；两行内容左侧留两个字符，底部留一个空白终端行。独立 iTerm2 底部窗格每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次，退出可用 Ctrl-C。
 
 **两行布局**：
 

@@ -61,7 +61,7 @@ Built on the Claude Code official custom StatusLine API — **all data comes dir
 
 Token Tracker's Stop Hook stays silent and records the session-to-terminal mapping. Codex's native footer shows a single line. For two persistent lines in the same terminal pane, enter tmux, run `tt statusbar tmux`, then start or resume Codex in that tmux session. The first Codex response maps the session to the active pane. This setting affects only the current tmux session; run it again in a new one. An already-running Codex session outside tmux must be resumed inside tmux.
 
-The tmux bar refreshes every 10 seconds. The older iTerm2 split-pane option remains available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
+The tmux bar refreshes every 10 seconds. Its two content rows have two spaces of left padding and one empty terminal row beneath them. The older iTerm2 split-pane option remains available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
 
 **Two-line layout**:
 

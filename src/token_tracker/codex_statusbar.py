@@ -147,15 +147,18 @@ def tmux() -> int:
     if not pane:
         print("请先在 tmux 中运行此命令。", file=sys.stderr)
         return 1
-    for index in range(2):
-        command = shlex.join([sys.executable, "-B", "-m", "token_tracker.codex_statusbar", "tmux-line", str(index)])
-        value = f"#({command} #{{pane_id}})"
+    for index in range(3):
+        if index == 2:
+            value = ""
+        else:
+            command = shlex.join([sys.executable, "-B", "-m", "token_tracker.codex_statusbar", "tmux-line", str(index)])
+            value = f"  #({command} #{{pane_id}})"
         result = subprocess.run(["tmux", "set-option", "-t", pane, f"status-format[{index}]", value],
                                 capture_output=True, text=True)
         if result.returncode:
             print(result.stderr.strip(), file=sys.stderr)
             return 1
-    for option, value in (("status", "2"), ("status-style", "bg=default,fg=default"),
+    for option, value in (("status", "3"), ("status-style", "bg=default,fg=default"),
                           ("status-interval", "10")):
         result = subprocess.run(["tmux", "set-option", "-t", pane, option, value], capture_output=True, text=True)
         if result.returncode:

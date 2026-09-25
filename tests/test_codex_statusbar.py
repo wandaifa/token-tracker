@@ -81,18 +81,21 @@ def test_tmux_line_uses_active_pane_mapping(tmp_path, monkeypatch, capsys):
     assert "等待当前 Codex" in capsys.readouterr().out
 
 
-def test_tmux_configures_two_rows_for_current_pane(monkeypatch, capsys):
+def test_tmux_configures_padded_rows_for_current_pane(monkeypatch, capsys):
     monkeypatch.setenv("TMUX_PANE", "%3")
     run = MagicMock(return_value=subprocess.CompletedProcess([], 0, "", ""))
     monkeypatch.setattr(codex_statusbar.subprocess, "run", run)
 
     assert codex_statusbar.tmux() == 0
     commands = [call.args[0] for call in run.call_args_list]
-    assert len(commands) == 5
+    assert len(commands) == 6
     assert commands[0][0:4] == ["tmux", "set-option", "-t", "%3"]
-    assert commands[0][4] == "status-format[0]" and "tmux-line 0 #{pane_id}" in commands[0][5]
-    assert commands[1][4] == "status-format[1]" and "tmux-line 1 #{pane_id}" in commands[1][5]
-    assert commands[2][-2:] == ["status", "2"]
-    assert commands[3][-2:] == ["status-style", "bg=default,fg=default"]
-    assert commands[4][-2:] == ["status-interval", "10"]
+    assert commands[0][4] == "status-format[0]" and commands[0][5].startswith("  #(")
+    assert "tmux-line 0 #{pane_id}" in commands[0][5]
+    assert commands[1][4] == "status-format[1]" and commands[1][5].startswith("  #(")
+    assert "tmux-line 1 #{pane_id}" in commands[1][5]
+    assert commands[2][-2:] == ["status-format[2]", ""]
+    assert commands[3][-2:] == ["status", "3"]
+    assert commands[4][-2:] == ["status-style", "bg=default,fg=default"]
+    assert commands[5][-2:] == ["status-interval", "10"]
     assert "两行状态栏" in capsys.readouterr().out
