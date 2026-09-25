@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 Codex 状态栏 `0.6.3` 已推送并从个人 fork 安装到 pipx；当前 Codex 的 tmux 会话中，两行彩色状态与原生状态行左侧对齐，底部空白行经用户截图验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
+个人 fork 的 Codex 状态栏 `0.6.3` 已推送并从个人 fork 安装到 pipx；当前 Codex 的 tmux 会话中，两行彩色状态与原生状态行左侧对齐，底部空白行经用户截图验收。用户级 `~/.zshrc` 已让新窗口无参数运行 `codex` 时自动启动带两行状态的 tmux 会话，真实新窗口验收待做。
 
 ## 上游进度存档
 
@@ -155,6 +155,7 @@
 
 ## 进行中
 
+- 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
 
 
@@ -181,6 +182,7 @@
 
 ## 最近验证
 
+- 2026-09-25：`~/.zshrc` 现有 `codex()` 仅对无参数交互启动新增自动 tmux 分支，保留 `-ds`、`-k` 和其他参数分支；`zsh -n` 通过，模拟新窗口确认 `tmux new-session` 带当前工作目录及状态栏启动命令，`codex --version` 仍返回原生 `0.156.1`。独立 tmux 会话验证 `$HOME/.local/bin/tt statusbar tmux` 可写入两行内容加底部空白行；新 iTerm2 窗口的真实启动待验收。
 - 2026-09-25：用户提供 `0.6.3` 当前会话截图：原生状态行与 Token Tracker 两行左侧对齐；Token Tracker 第二行下方可见一行空白，再到 iTerm2 状态栏。截图显示 Total、Model、5h、7d、Ctx 与彩色进度条均正常。
 - 2026-09-25：用户截图确认 `0.6.2` 在 tmux 内显示原生单行下方的两行彩色状态；同一会话 Hook 映射为 `%0`，两行 CLI 输出均有真实数据。`0.6.3` 将 `status-format[0/1]` 前加两个空格、`status-format[2]` 置空且状态区设为 3 行；完整 pytest 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `327dfc4585198922be55ba2749cc939a378dea44` 已推送个人 fork，pipx 从该提交安装 `0.6.3`，当前 tmux 会话用安装版重新配置，读回确认为两行内容加一行底部留白；新间距的截图视觉验收待做。
 - 2026-09-25：Homebrew 安装 tmux 3.7c；临时 tmux 会话中 `status=2`、两行 `status-format` 与 10 秒刷新配置均读回一致，PTY 输出显示两行区域和真彩色标记转换后的红色文本。`tt statusbar watch <当前会话> --once` 从真实 Codex JSONL 输出完整两行。沙箱外 `.venv/bin/python -m pytest` 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `26ebff57d2dbdfcceb32015843678ef01b7ac2c2` 已推送个人 fork，pipx 从同一提交安装 `0.6.2`；已安装版本在真实 tmux 会话写出两行配置并从当前会话 JSONL 渲染出完整两行，tmux 内 Codex 真机展示尚待验收。
