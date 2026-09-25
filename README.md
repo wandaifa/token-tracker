@@ -62,6 +62,8 @@
 
 Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为状态栏。Token Tracker 的 Stop Hook 因此保持静默，只记录 sidebar 跳转所需的会话与终端映射。当前会话底栏使用 Codex 原生 `/statusline`，可选择项目、Git 分支、会话总 Token、5 小时额度、周额度、上下文和模型。底栏只有一行，窗格较窄时尾部字段可能省略；Codex 暂不支持将 Token Tracker 的自定义两行进度条嵌入原生底栏。
 
+原生 `used-tokens` 使用 Codex 自己的口径：输入扣除缓存读取后再加输出；Token Tracker 的 `Total` 包含缓存读取，因此同一会话的两个数字可能不同。[Codex 0.156.1 源码](https://github.com/openai/codex/blob/rust-v0.156.1/codex-rs/tui/src/token_usage.rs)
+
 如果确实需要完整两行彩色进度条，可在 iTerm2 中手动运行 `tt statusbar split` 打开独立底部窗格；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
 
 状态栏每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次；退出底部窗格可用 Ctrl-C。
