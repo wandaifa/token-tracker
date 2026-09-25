@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 Codex 状态栏已在当前 Codex 的 tmux 会话中真实显示两行内容；本地 `0.6.3` 为两行文字加左留白和底部空白行，自动测试及当前 tmux 配置读回通过，视觉排版待验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
+个人 fork 的 Codex 状态栏已在当前 Codex 的 tmux 会话中真实显示两行内容；`0.6.3` 为两行文字加左留白和底部空白行，已推送并从个人 fork 安装到 pipx，当前 tmux 会话已应用，视觉排版待验收。原生单行底栏继续可用，Stop Hook 静默保留 sidebar 终端映射。
 
 ## 上游进度存档
 
@@ -180,7 +180,7 @@
 
 ## 最近验证
 
-- 2026-09-25：用户截图确认 `0.6.2` 在 tmux 内显示原生单行下方的两行彩色状态；同一会话 Hook 映射为 `%0`，两行 CLI 输出均有真实数据。`0.6.3` 将 `status-format[0/1]` 前加两个空格、`status-format[2]` 置空且状态区设为 3 行；当前 tmux 会话配置读回一致。完整 pytest 为 423 passed，Ruff、mypy、`git diff --check` 通过；新间距的截图视觉验收待做。
+- 2026-09-25：用户截图确认 `0.6.2` 在 tmux 内显示原生单行下方的两行彩色状态；同一会话 Hook 映射为 `%0`，两行 CLI 输出均有真实数据。`0.6.3` 将 `status-format[0/1]` 前加两个空格、`status-format[2]` 置空且状态区设为 3 行；完整 pytest 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `327dfc4585198922be55ba2749cc939a378dea44` 已推送个人 fork，pipx 从该提交安装 `0.6.3`，当前 tmux 会话用安装版重新配置，读回确认为两行内容加一行底部留白；新间距的截图视觉验收待做。
 - 2026-09-25：Homebrew 安装 tmux 3.7c；临时 tmux 会话中 `status=2`、两行 `status-format` 与 10 秒刷新配置均读回一致，PTY 输出显示两行区域和真彩色标记转换后的红色文本。`tt statusbar watch <当前会话> --once` 从真实 Codex JSONL 输出完整两行。沙箱外 `.venv/bin/python -m pytest` 为 423 passed，Ruff、mypy、`git diff --check` 通过。代码提交 `26ebff57d2dbdfcceb32015843678ef01b7ac2c2` 已推送个人 fork，pipx 从同一提交安装 `0.6.2`；已安装版本在真实 tmux 会话写出两行配置并从当前会话 JSONL 渲染出完整两行，tmux 内 Codex 真机展示尚待验收。
 - 2026-09-25：`gh api` 独立核对个人 fork `main` 为 `b41fba1a1c9a5d184845c4ba147b06e36465da26`；pipx 元数据指向 `git+https://github.com/wandaifa/token-tracker.git@b41fba1a1c9a5d184845c4ba147b06e36465da26` 且版本 `0.6.1`，`tt --version` 一致。安装包的 Hook 版本与用户级脚本均为 2.1，`needs_update=False`；真实会话 `tt statusbar watch --once` 输出项目、模型、额度和总 Token。官方 0.156.1 源码的 `blended_total()` 为非缓存输入加输出，解释原生 `18.8K used` 与 Token Tracker 原始 `30k` 的差异。
 - 2026-09-25：Codex 0.156.1 在已信任项目目录真正启动，底栏显示于同一会话输入框下；80 列输出显示项目、Git 分支、额度等，尾部被截断，故将模型与额度提前。发送一次简短请求后未见 Token Tracker Hook 摘要；退出并恢复同一会话，原生底栏实际显示 `18.8K used`。本机 `config.toml` 经 `tomllib` 解析出 7 个合法内置字段。新 Hook 经旧 pipx Python 真实执行，stdout/stderr 均为空且模拟 iTerm 会话映射写入成功；本机 Hook 版本 2.1。完整 pytest 在可读取 `ps` 的环境通过，Ruff 全过，mypy 42 个源文件无错误，`git diff --check` 通过。沙箱内现有 `test_alive_pids_own_process_and_start_time_guard` 因 `ps` 受限失败，沙箱外定向与全量测试均通过。
