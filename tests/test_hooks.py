@@ -57,6 +57,8 @@ def _isolate_real_home(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "_LEGACY_THEME_PATH", str(cfg / "theme.json"))
     monkeypatch.setattr(config, "_LEGACY_LANG_PATH", str(cfg / "lang.json"))
     monkeypatch.setattr(codex_iterm_profile, "PROFILE_PATH", tmp_path / "iterm-profile.json")
+    monkeypatch.setattr(codex_iterm_profile, "MANAGED_PROFILE_PATH",
+                        tmp_path / "iTerm2" / "DynamicProfiles" / "token-tracker-colors.json", raising=False)
 
 
 def test_all_path_constants_are_isolated():
@@ -270,6 +272,46 @@ def test_codex_iterm_trigger_colors_follow_theme(tmp_path, monkeypatch):
     result = json.loads(profile_path.read_text(encoding="utf-8"))["Profiles"]
     assert result[1]["Triggers"][0]["parameter"] == "{#40a02b,}"
     assert result[1]["Triggers"][4]["parameter"] == "{#fe640b,}"
+
+
+def test_codex_iterm_profile_created_once_and_follows_theme(tmp_path, monkeypatch):
+    profile_dir = tmp_path / "iTerm2" / "DynamicProfiles"
+    profile_dir.mkdir(parents=True)
+    managed = profile_dir / "token-tracker-colors.json"
+    monkeypatch.setattr(codex_iterm_profile, "MANAGED_PROFILE_PATH", managed)
+    assert codex_iterm_profile.sync_trigger_colors("mocha")
+    profile = json.loads(managed.read_text(encoding="utf-8"))["Profiles"][0]
+    assert profile["Name"] == "Token Tracker Colors"
+    assert len(profile["Guid"]) == 36
+    assert len(profile["Triggers"]) == 11
+    assert all(trigger["action"] == "HighlightTrigger" for trigger in profile["Triggers"])
+    assert profile["Triggers"][0]["parameter"] == "{#a6e3a1,}"
+    assert profile["Triggers"][4]["parameter"] == "{#fab387,}"
+    assert profile["Triggers"][10]["parameter"] == "{#f38ba8,}"
+    first_content = managed.read_text(encoding="utf-8")
+    assert codex_iterm_profile.sync_trigger_colors("mocha")
+    assert managed.read_text(encoding="utf-8") == first_content
+    assert codex_iterm_profile.sync_trigger_colors("latte")
+    changed = json.loads(managed.read_text(encoding="utf-8"))["Profiles"][0]
+    assert changed["Guid"] == profile["Guid"]
+    assert changed["Triggers"][0]["parameter"] == "{#40a02b,}"
+    assert changed["Triggers"][4]["parameter"] == "{#fe640b,}"
+
+
+def test_codex_iterm_profile_missing_directory_or_foreign_file_is_untouched(tmp_path, monkeypatch):
+    managed = tmp_path / "iTerm2" / "DynamicProfiles" / "token-tracker-colors.json"
+    monkeypatch.setattr(codex_iterm_profile, "MANAGED_PROFILE_PATH", managed)
+    assert not codex_iterm_profile.sync_trigger_colors("mocha")
+    assert not managed.exists()
+    managed.parent.parent.mkdir()
+    assert codex_iterm_profile.sync_trigger_colors("mocha")
+    assert managed.is_file()
+    foreign = managed.with_name("other-profile.json")
+    monkeypatch.setattr(codex_iterm_profile, "MANAGED_PROFILE_PATH", foreign)
+    foreign.write_text('{"Profiles": [{"Name": "Someone Else", "Guid": "foreign"}]}\n', encoding="utf-8")
+    original = foreign.read_text(encoding="utf-8")
+    assert not codex_iterm_profile.sync_trigger_colors("mocha")
+    assert foreign.read_text(encoding="utf-8") == original
 
 
 def test_codex_statusline_records_terminal_map_without_touching_cc_status(tmp_path):
@@ -872,6 +914,25 @@ def test_setup_codex_uses_hooks_json_without_creating_config(tmp_path, monkeypat
     installed = json.loads(codex_hooks.read_text(encoding="utf-8"))["hooks"]
     assert set(installed) == {"Stop", "UserPromptSubmit"}
     assert "codex-statusline.py" in installed["Stop"][0]["hooks"][0]["command"]
+
+
+def test_setup_codex_creates_iterm_profile_and_theme_refreshes_it(tmp_path, monkeypatch):
+    codex_dir = tmp_path / "_home" / ".codex"
+    codex_dir.mkdir(parents=True)
+    managed = codex_iterm_profile.MANAGED_PROFILE_PATH
+    managed.parent.mkdir(parents=True)
+    monkeypatch.setattr(config, "resolve_theme", lambda: "mocha")
+
+    hooks._setup_codex(hooks.SetupComponents(), quiet=True)
+    profile = json.loads(managed.read_text(encoding="utf-8"))["Profiles"][0]
+    guid = profile["Guid"]
+    assert profile["Triggers"][0]["parameter"] == "{#a6e3a1,}"
+
+    monkeypatch.setattr(config, "resolve_theme", lambda: "latte")
+    hooks._write_codex_statusline_script()  # tt theme set -> update_hook 的共享入口
+    updated = json.loads(managed.read_text(encoding="utf-8"))["Profiles"][0]
+    assert updated["Guid"] == guid
+    assert updated["Triggers"][0]["parameter"] == "{#40a02b,}"
 
 
 def test_detect_system_lang_non_darwin_falls_back_to_env(monkeypatch):

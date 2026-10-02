@@ -15,6 +15,7 @@
 - `src/token_tracker/` 放运行代码；`templates/` 放由 setup 烘焙的状态栏脚本，安装逻辑在 `hooks.py` 与 `sidebar_install.py`。
 - `tests/` 放有意义的回归测试；`assets/` 放 README 使用的静态图片。
 - 仓库根目录仅放项目配置、规则、说明和进度文档。临时验证产物使用系统临时目录，不提交；任务结束清理前遵守删除确认规则。
+- iTerm2 彩色 Hook 使用用户目录 `Library/Application Support/iTerm2/DynamicProfiles/token-tracker-colors.json` 中的专用动态 Profile：仅在 iTerm2 配置根目录已存在时由 `tt setup` 建立缺失的 `DynamicProfiles` 子目录及 Profile，GUID 每台机器独立生成；只更新自己管理的触发器，不修改默认或其他 Profile。已有 `token-tracker-colors-trial.json` 继续兼容，不迁移、不覆盖；`tt unsetup` 不自动删除 Profile。测试必须使用临时路径，不写真实 iTerm2 配置。
 
 ## 验证
 

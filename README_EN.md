@@ -13,7 +13,7 @@ Custom StatusLine integration + CLI Dashboard — see token usage, cost, and rat
 ## Highlights
 
 - **Unified multi-agent tracking** — Claude Code + Codex + Kimi Code in one place, grouped by source
-- **Status line integration** — Claude Code via its official StatusLine API; Codex uses its native single-line footer or a two-line tmux status bar in the same terminal pane; Kimi Code via its official `status_line` API
+- **Status line integration** — Claude Code via its official StatusLine API; Codex can use an iTerm2 Hook color summary or a two-line tmux status bar; Kimi Code via its official `status_line` API
 - **Live sidebar** — `tt sidebar` shows all active sessions (Claude Code + Codex + Kimi Code); `$tt-sidebar` in Codex or `/skill:tt-sidebar` in Kimi Code opens a current-session-only pane on the right at one-third width
 - **Rate limit monitoring** — real-time 5h / 7d quota usage with reset countdown
 - **Multi-dimensional cost analysis** — per-session, daily, weekly, monthly cost breakdown
@@ -59,7 +59,14 @@ Built on the Claude Code official custom StatusLine API — **all data comes dir
 
 ### Codex (native footer, iTerm2 Hook summary, or tmux status bar)
 
-In iTerm2 outside tmux, Token Tracker's Stop Hook prints two ANSI-free summary lines after each response. The existing “Token Tracker Colors Trial” iTerm2 dynamic profile colors those lines with 11 HighlightTrigger rules; `tt setup` and `tt theme set` synchronize its colors when that profile already exists. Without the selected profile, the text remains readable but uncolored. This is a message in the conversation area, not a fixed footer. In tmux and other terminals the Hook stays silent and only records the session-to-terminal mapping. Codex's native footer still shows a single line. For two persistent lines in the same terminal pane, enter tmux, run `tt statusbar tmux`, then start or resume Codex in that tmux session. The first Codex response maps the session to the active pane. This setting affects only the current tmux session; run it again in a new one. An already-running Codex session outside tmux must be resumed inside tmux.
+Choose the mode by terminal environment; no config toggle is needed:
+
+- **iTerm2 outside tmux**: enable Codex faux statusline in `tt setup` (on by default). The Stop Hook adds two ANSI-free summary lines to the conversation after each response. If iTerm2's config directory exists, `tt setup` creates a dedicated “Token Tracker Colors” dynamic profile, including the `DynamicProfiles` subdirectory when missing. In the current iTerm2 window, press Cmd-Shift-O, enter `/p Token Tracker Colors`, and select it once. Its 11 HighlightTrigger rules color the summary; `tt theme set` updates the colors. Without selecting it, the text stays readable but uncolored. Existing “Token Tracker Colors Trial” profiles remain supported and are synchronized first, without migration.
+- **tmux**: enter tmux, run `tt statusbar tmux`, then start or resume Codex in that tmux session. Two lines persist at the bottom of the pane and refresh every 10 seconds; the Hook does not duplicate them in the conversation. Run `tt statusbar tmux` again in each new tmux session. Exiting tmux restores the iTerm2 Hook summary. Token Tracker itself does not automatically start tmux; if your shell has a wrapper that does, bypass it to use the non-tmux Hook mode.
+
+Codex's native `/statusline` remains a single-line footer. Outside iTerm2 and tmux, the Token Tracker Hook does not print a summary. Both modes require the Codex Stop Hook installed by `tt setup`; review and trust it in Codex `/hooks`. The iTerm2 profile only colors windows that select it; it does not replace the default profile. `tt unsetup` removes managed Hooks but leaves the profile file for manual cleanup. If iTerm2's config directory does not exist yet, `tt setup` will not create the entire app config; start iTerm2 first, then rerun `tt setup`. Hook messages appear in the conversation area, not a fixed footer.
+
+In tmux, the first Codex response maps the session to the active pane. The setting affects only that tmux session and does not edit your tmux config. An already-running Codex session outside tmux must be resumed inside tmux.
 
 The tmux bar refreshes every 10 seconds. Its two content rows have two spaces of left padding and one empty terminal row beneath them. The older iTerm2 split-pane option remains available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
 
@@ -107,6 +114,15 @@ For Kimi Code, `tt setup` installs the Skill to `~/.kimi-code/skills/tt-sidebar`
 ![Sessions](assets/screenshot-sessions.png)
 
 ## Install
+
+This feature branch's iTerm2 Hook coloring has not been published to PyPI. New users with `pipx` already installed can install it from the personal fork, then run setup:
+
+```bash
+pipx install "git+https://github.com/wandaifa/token-tracker.git@feature/codex-iterm-trigger-statusline"
+tt setup
+```
+
+The original project's installer below installs the `stormzhang` PyPI release, **not this branch's iTerm2 Hook mode**:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/stormzhang/token-tracker/main/install.sh | bash

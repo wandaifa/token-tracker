@@ -13,7 +13,7 @@
 ## 功能亮点
 
 - **多 Agent 统一追踪** — Claude Code + Codex + Kimi Code 统一读取，多 Agent 按来源分组
-- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex 原生单行底栏或 tmux 同窗格底部两行状态；Kimi Code 用官方 `status_line` 接口
+- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex 可用 iTerm2 Hook 彩色摘要或 tmux 同窗格底部两行状态；Kimi Code 用官方 `status_line` 接口
 - **实时侧边栏** — `tt sidebar` 窄窗格常驻面板：全部活跃会话一屏总览（状态灯 + 最近提示词 + 「下一步」建议），点击会话直达对应 iTerm2 / tmux 窗格
 - **当前会话自动分屏** — Codex 中显式执行 `$tt-sidebar`，在原会话右侧自动打开 1/3 宽度的独立提示词侧边栏
 - **限额监控** — 实时 5h / 7d 配额百分比 + 重置倒计时
@@ -60,11 +60,16 @@
 
 ### Codex（原生底栏／iTerm2 Hook 彩色摘要）
 
-Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的固定状态栏。本分支在 iTerm2 且非 tmux 的会话里，Stop Hook 在每轮回答后输出两行无 ANSI 的摘要；选用已有的「Token Tracker Colors Trial」iTerm2 动态 Profile 后，由 11 条 HighlightTrigger 为摘要上色。`tt setup` 和 `tt theme set` 会同步这个已存在 Profile 的颜色；未选中该 Profile 时文字仍可读但没有这些颜色。tmux 或其它终端的 Hook 仍保持静默，只记录 sidebar 跳转所需的映射。当前会话底栏仍可用 Codex 原生 `/statusline`，它只有一行，窗格较窄时尾部字段可能省略。
+Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的固定状态栏。两种方式按终端环境切换，无需修改配置：
+
+- **iTerm2、非 tmux**：`tt setup` 里启用 Codex 伪 statusline（默认开启）。Stop Hook 在每轮回答后追加两行无 ANSI 摘要。`tt setup` 在 iTerm2 配置目录已存在时自动创建专用「Token Tracker Colors」动态 Profile（包括缺失的 `DynamicProfiles` 子目录）；首次使用在当前 iTerm2 窗口按 Cmd-Shift-O，输入 `/p Token Tracker Colors` 并选用。11 条 HighlightTrigger 给摘要上色；`tt theme set` 会同步颜色。没选 Profile 时文字仍可读，但没有这些颜色。旧用户已有的「Token Tracker Colors Trial」会继续兼容，优先同步旧 Profile，不强制迁移。
+- **tmux**：先进入 tmux，运行 `tt statusbar tmux`，再在同一 tmux 会话里启动或恢复 Codex。两行状态常驻窗格底部，每 10 秒刷新；Hook 不会在对话区重复输出摘要。每个新 tmux 会话需再运行一次 `tt statusbar tmux`。从 tmux 退出后，iTerm2 窗口恢复上述 Hook 摘要。Token Tracker 本身不会自动进入 tmux；若 shell 另设了自动进入 tmux 的包装函数，需绕开它才能使用非 tmux 的 Hook 方式。
+
+Codex 原生 `/statusline` 仍可显示单行底栏；在其他终端、且不在 tmux 时，Token Tracker 的 Hook 不输出摘要。两种方式均依赖 `tt setup` 安装的 Codex Stop Hook，安装后在 Codex `/hooks` 中检查并信任。iTerm2 动态 Profile 只给当前选用它的窗口上色，不改默认 Profile；`tt unsetup` 移除 Hook，但保留 Profile 文件供手工处理。若 iTerm2 配置目录尚不存在，`tt setup` 不会创建整套配置；请先启动 iTerm2，再重跑 `tt setup`。
 
 原生 `used-tokens` 使用 Codex 自己的口径：输入扣除缓存读取后再加输出；Token Tracker 的 `Total` 包含缓存读取，因此同一会话的两个数字可能不同。[Codex 0.156.1 源码](https://github.com/openai/codex/blob/rust-v0.156.1/codex-rs/tui/src/token_usage.rs)
 
-如果需要在当前终端窗格底部常驻完整两行状态，可先进入 tmux，再运行 `tt statusbar tmux`，随后在同一个 tmux 会话中启动或恢复 Codex。Codex 首次回答后，Stop Hook 会把会话绑定到当前 tmux 窗格；状态栏按活动窗格显示对应会话。该配置只作用于当前 tmux 会话，不改个人 tmux 配置文件。退出 tmux 后，下次新建 tmux 会话需再次运行此命令。当前已在 tmux 外运行的 Codex 会话无法直接迁入，需在 tmux 内恢复。
+tmux 方式在 Codex 首次回答后把会话绑定到当前 tmux 窗格，状态栏按活动窗格显示对应会话；它不改个人 tmux 配置文件。当前已在 tmux 外运行的 Codex 会话无法直接迁入，需在 tmux 内恢复。
 
 已有 iTerm2 分屏方案仍可手动运行 `tt statusbar split`；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
 
@@ -147,6 +152,15 @@ $tt-sidebar
 - hook 同样走本地 FIFO 推送，无 sidebar 时立即返回；新会话生效，`tt unsetup` 一并移除。
 
 ## 安装
+
+本独立分支的 iTerm2 Hook 配色方案尚未发布到 PyPI；新用户可用已安装的 `pipx` 从个人 fork 安装本分支，然后运行 `tt setup`：
+
+```bash
+pipx install "git+https://github.com/wandaifa/token-tracker.git@feature/codex-iterm-trigger-statusline"
+tt setup
+```
+
+下面的原项目安装脚本只安装 `stormzhang` 的 PyPI 版本，**不包含本分支的 iTerm2 Hook 方案**：
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/stormzhang/token-tracker/main/install.sh | bash

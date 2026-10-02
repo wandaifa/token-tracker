@@ -95,7 +95,7 @@ def _render_codex_statusline_hook() -> str:
     )
 
 
-def _write_codex_statusline_script() -> None:
+def _write_codex_statusline_script() -> str | None:
     os.makedirs(_TT, exist_ok=True)
     with open(CODEX_STATUSLINE_HOOK_PATH, "w", encoding="utf-8") as f:
         f.write(_render_codex_statusline_hook())
@@ -103,7 +103,7 @@ def _write_codex_statusline_script() -> None:
         os.chmod(CODEX_STATUSLINE_HOOK_PATH,
                  os.stat(CODEX_STATUSLINE_HOOK_PATH).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     from .codex_iterm_profile import sync_trigger_colors
-    sync_trigger_colors(config.resolve_theme())
+    return sync_trigger_colors(config.resolve_theme())
 
 
 def _installed_codex_statusline_version() -> str | None:
@@ -673,8 +673,9 @@ def _setup_codex(components: SetupComponents, quiet: bool = False) -> None:
 
     config.save_codex_faux_statusline(components.codex_faux_statusline)  # 写入意图
 
+    profile_name = None
     if components.codex_faux_statusline:
-        _write_codex_statusline_script()
+        profile_name = _write_codex_statusline_script()
     else:
         _uninstall_codex_statusline("")
 
@@ -682,6 +683,8 @@ def _setup_codex(components: SetupComponents, quiet: bool = False) -> None:
     p(f"[green]✓[/green] {t('codex_configured')}")
     if components.codex_faux_statusline:
         p(f"[dim]{t('codex_statusline_hint')}[/dim]")
+        if profile_name:
+            p(f"[dim]{t('iterm_profile_hint', name=profile_name)}[/dim]")
     p(f"[dim]{t('restart_codex')}[/dim]")
 
 
