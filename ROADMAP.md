@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 两行彩色摘要可见，但现有窗格切换主题后的颜色未随之改变，视觉验收未通过；分支未推送 GitHub。`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
+个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 两行彩色摘要可见，用户最新截图中的新状态已呈 `mocha` 配色；切换后多久生效、是否需重新应用 Profile 仍待确认。分支未推送 GitHub，`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
 
 ## 上游进度存档
 
@@ -155,7 +155,7 @@
 
 ## 进行中
 
-- `feature/codex-iterm-trigger-statusline`：本地代码、自动化检查及用户级安装验证已通过；现有 iTerm2 窗格切换 `latte` → `mocha` 后仍显示旧颜色，待查窗格实际 Profile／Trigger 状态并完成视觉验收；GitHub 远端分支推送仍需确认。不可把 Hook 消息区当作固定底栏。
+- `feature/codex-iterm-trigger-statusline`：本地代码、自动化检查及用户级安装验证已通过；用户最新截图显示两行状态已呈 `mocha` 配色，但切换即时生效机制未确认；GitHub 远端分支推送仍需确认。不可把 Hook 消息区当作固定底栏。
 - 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
 
@@ -183,6 +183,7 @@
 
 ## 最近验证
 
+- 2026-10-02：用户新截图中 11:18、11:39 两组 Codex Hook 两行状态均呈浅绿色、浅橙色和粉色，与先前 `latte` 的高饱和绿、橙、红明显不同；可见字段和进度条的视觉配色已变化。截图不能证明切换后是否即时生效，也不能确定这期间是否重新应用 Profile；不据此归因于 iTerm2 缓存或 `tt` 的实时刷新机制。
 - 2026-10-02：用户截图中 11:07 和 11:11 的两行状态颜色视觉上未变化，不能把配置同步称为当前窗格即时换色。只读复查 `tt` 当前主题为 `mocha`、iTerm2 动态 Profile 11／11 条高亮规则及偏好文件中相应颜色已更新，生成的 Hook 14／14 个颜色值也匹配 `mocha`；AppleScript 枚举到 5 个存活会话，其中 2 个使用 Token Tracker Profile，但尚未确认截图窗格对应哪个会话。现有会话的 Trigger 缓存或会话级覆盖只是待验证推断；未改动用户窗口设置。
 - 2026-10-02：用户明确要求删除切换前的 7 个备份文件及旧 `0.5.7` 虚拟环境。删除前确认现用 Codex／Claude 配置、sidebar、`tt` 软链接均不再引用旧解释器，`ps` 未发现旧环境进程；精确删除 `~/.config/token-tracker/backups/pre-wandaifa-0.7.0-20261002`（约 56 KB）和 `~/.local/share/token-tracker/venv`（约 43 MB），随后移除各自空父目录。独立命令复验目标均不存在、`tt --version` 仍为 `0.7.0`、Codex Stop 命令仍指向新环境；真实 JSONL 再跑 Hook 得到两行无 ANSI 摘要、退出码 0。本次为永久删除，无旧环境本地回退副本。
 - 2026-10-02：用户明确要求本机切换到 fork 的 `0.7.0`。从本地 Git 提交 `150e3f1` 安装独立虚拟环境，`direct_url.json` 精确指向该提交；保留原 `0.5.7` 虚拟环境，在 `~/.config/token-tracker/backups/pre-wandaifa-0.7.0-20261002` 保存原 Codex／Claude 配置、脚本、sidebar Skill 与 iTerm Profile。`tt --version` 实测 `0.7.0`，Codex Stop／UserPromptSubmit 和 Claude statusLine 均指向新解释器，Codex 脚本版本 `2.2`；新 Hook 读取真实 Codex JSONL 手动执行得到两行合法 `systemMessage`，退出码 0、stderr 为空、ANSI／残缺 SGR 均为零。iTerm Profile 11 条规则存在；实际 TUI 视觉效果待用户验收，GitHub 未推送。
