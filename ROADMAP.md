@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 两行彩色摘要可见，用户截图及跨窗口改主题实测确认状态配色会随主题立即变化。分支未推送 GitHub，`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
+个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 两行彩色摘要可见，用户截图及跨窗口改主题实测确认状态配色会随主题立即变化。独立分支已推送个人 fork，未改 `main`、未打 tag；`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-10-02：`feature/codex-iterm-trigger-statusline` 的 `0.7.0` iTerm2 Hook 彩色摘要方案及验收记录已推送到 `wandaifa/token-tracker` 同名独立分支；首次推送后远端哈希与本地 `470092b` 一致，`main` 仍为 `3532358`，未创建 tag。Hook 消息区不是固定底栏。
 - 2026-10-02：用户在另一个窗口修改 Token Tracker 主题后，确认当前 Codex 窗口的两行彩色状态立即随之变化；此前截图也已显示新状态呈 `mocha` 配色。本项只验收 iTerm2 Hook 摘要的主题联动，不代表其他终端或自动 tmux 启动已验收。
 - 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
 - 2026-09-24：定位 Codex Stop Hook 显示问题与可行界面：模板把 ANSI 配色写入 `systemMessage`，当前 Codex 按 Hook 消息展示；现有 Textual sidebar 的直接终端输出可产生 ANSI 色彩。仅完成诊断，没有声称界面集成已经实测。
@@ -156,7 +157,6 @@
 
 ## 进行中
 
-- `feature/codex-iterm-trigger-statusline`：本地代码、自动化检查、用户级安装及跨窗口改主题即时换色均已验证；GitHub 远端分支推送仍需确认。不可把 Hook 消息区当作固定底栏。
 - 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
 
@@ -184,6 +184,7 @@
 
 ## 最近验证
 
+- 2026-10-02：GitHub 登录账号经 `gh auth status` 和 `gh api user` 核对为 `wandaifa`；远端此前无 `feature/codex-iterm-trigger-statusline`，首次 `git push -u origin` 成功新建该分支，只读复验远端哈希 `470092b351e65e1b139b97851a492890e04e5c13` 与当时本地 HEAD 一致，远端 `main` 未变化。未推送 tag，也未创建 PR。
 - 2026-10-02：用户反馈在另一个窗口设置 Token Tracker 主题后，当前 Codex 窗口的两行状态颜色立即生效；此结论依据用户真实窗口操作反馈，未重新测试其他终端、其他 Profile 或自动 tmux 启动。
 - 2026-10-02：用户新截图中 11:18、11:39 两组 Codex Hook 两行状态均呈浅绿色、浅橙色和粉色，与先前 `latte` 的高饱和绿、橙、红明显不同；可见字段和进度条的视觉配色已变化。截图不能证明切换后是否即时生效，也不能确定这期间是否重新应用 Profile；不据此归因于 iTerm2 缓存或 `tt` 的实时刷新机制。
 - 2026-10-02：用户截图中 11:07 和 11:11 的两行状态颜色视觉上未变化，不能把配置同步称为当前窗格即时换色。只读复查 `tt` 当前主题为 `mocha`、iTerm2 动态 Profile 11／11 条高亮规则及偏好文件中相应颜色已更新，生成的 Hook 14／14 个颜色值也匹配 `mocha`；AppleScript 枚举到 5 个存活会话，其中 2 个使用 Token Tracker Profile，但尚未确认截图窗格对应哪个会话。现有会话的 Trigger 缓存或会话级覆盖只是待验证推断；未改动用户窗口设置。
