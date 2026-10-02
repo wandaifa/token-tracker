@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 两行彩色摘要可见，用户截图及跨窗口改主题实测确认状态配色会随主题立即变化。独立分支已推送个人 fork，未改 `main`、未打 tag；`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
+个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 已升至 `0.8.0` 并推送个人 fork：`tt setup` 能在隔离测试中建立 iTerm2 专用彩色动态 Profile，主题同步、旧 Trial 兼容及中英文两种模式说明已通过测试和静态检查；新用户真实 iTerm2 窗口视觉效果待验收。用户级 `tt` 仍为已验收的 `0.7.0`，本次 `0.8.0` 尚未安装；`main` 未改、未打 tag。`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-10-02：独立分支本地 `0.8.0` 已实现 `tt setup` 自动建立 iTerm2 专用动态 Profile（仅在 iTerm2 配置根目录已存在时，缺少 `DynamicProfiles` 子目录会自动创建）、11 条颜色规则随主题同步、旧 Trial Profile 优先兼容；中英文 README 明确 Hook／tmux 两种路径及分支安装方式。隔离测试覆盖创建、重复 setup、主题切换和外部文件保护；仅确认代码与隔离行为，真实新用户窗口效果列为进行中。
 - 2026-10-02：`feature/codex-iterm-trigger-statusline` 的 `0.7.0` iTerm2 Hook 彩色摘要方案及验收记录已推送到 `wandaifa/token-tracker` 同名独立分支；首次推送后远端哈希与本地 `470092b` 一致，`main` 仍为 `3532358`，未创建 tag。Hook 消息区不是固定底栏。
 - 2026-10-02：用户在另一个窗口修改 Token Tracker 主题后，确认当前 Codex 窗口的两行彩色状态立即随之变化；此前截图也已显示新状态呈 `mocha` 配色。本项只验收 iTerm2 Hook 摘要的主题联动，不代表其他终端或自动 tmux 启动已验收。
 - 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
@@ -157,6 +158,7 @@
 
 ## 进行中
 
+- 在不改当前用户 Profile 的前提下，使用新安装环境验收 `0.8.0` 自动创建的专用 Profile 能在 iTerm2 窗口为 Codex 两行 Hook 摘要正确上色；本轮仅用临时路径完成自动化验证，未做真实窗口操作。
 - 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
 
@@ -184,6 +186,8 @@
 
 ## 最近验证
 
+- 2026-10-03：复验本地 `0.8.0` 完整 pytest、Ruff、mypy 和 `git diff --check` 均通过。推送前 `git ls-remote` 确认远端功能分支仍为本地基线 `744da987`；代码提交 `47dd6a5` 已非强制推送至 `wandaifa/token-tracker` 同名分支。用户级 `tt` 与真实 iTerm2 Profile 未修改，真实新用户窗口效果仍待验收。
+- 2026-10-02：本地 `0.8.0` 完整 `.venv/bin/python -m pytest -q` 在正常本机权限下通过；Ruff 全仓、mypy 43 个源文件、`git diff --check` 通过，`tomllib` 独立核对 `pyproject.toml` 与 `uv.lock` 的本包版本均为 `0.8.0`。沙箱内首次运行现有 Kimi 用例因临时回环端口被禁而失败，第二次跳过该用例后现有 sidebar 用例因进程启动时间不可读而失败；正常权限下两项均通过。`uv` 命令在本环境不可用，故未执行 `uv lock --check`。真实新建 iTerm2 Profile 的 GUI 效果未验收，用户级 `tt` 未切到本地 `0.8.0`。
 - 2026-10-02：GitHub 登录账号经 `gh auth status` 和 `gh api user` 核对为 `wandaifa`；远端此前无 `feature/codex-iterm-trigger-statusline`，首次 `git push -u origin` 成功新建该分支，只读复验远端哈希 `470092b351e65e1b139b97851a492890e04e5c13` 与当时本地 HEAD 一致，远端 `main` 未变化。未推送 tag，也未创建 PR。
 - 2026-10-02：用户反馈在另一个窗口设置 Token Tracker 主题后，当前 Codex 窗口的两行状态颜色立即生效；此结论依据用户真实窗口操作反馈，未重新测试其他终端、其他 Profile 或自动 tmux 启动。
 - 2026-10-02：用户新截图中 11:18、11:39 两组 Codex Hook 两行状态均呈浅绿色、浅橙色和粉色，与先前 `latte` 的高饱和绿、橙、红明显不同；可见字段和进度条的视觉配色已变化。截图不能证明切换后是否即时生效，也不能确定这期间是否重新应用 Profile；不据此归因于 iTerm2 缓存或 `tt` 的实时刷新机制。
