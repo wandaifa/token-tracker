@@ -58,9 +58,9 @@
 
 </details>
 
-### Codex（当前会话原生底栏）
+### Codex（原生底栏／iTerm2 Hook 彩色摘要）
 
-Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为状态栏。Token Tracker 的 Stop Hook 因此保持静默，只记录 sidebar 跳转所需的会话与终端映射。当前会话底栏使用 Codex 原生 `/statusline`，可选择项目、Git 分支、会话总 Token、5 小时额度、周额度、上下文和模型。底栏只有一行，窗格较窄时尾部字段可能省略；Codex 暂不支持将 Token Tracker 的自定义两行进度条嵌入原生底栏。
+Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的固定状态栏。本分支在 iTerm2 且非 tmux 的会话里，Stop Hook 在每轮回答后输出两行无 ANSI 的摘要；选用已有的「Token Tracker Colors Trial」iTerm2 动态 Profile 后，由 11 条 HighlightTrigger 为摘要上色。`tt setup` 和 `tt theme set` 会同步这个已存在 Profile 的颜色；未选中该 Profile 时文字仍可读但没有这些颜色。tmux 或其它终端的 Hook 仍保持静默，只记录 sidebar 跳转所需的映射。当前会话底栏仍可用 Codex 原生 `/statusline`，它只有一行，窗格较窄时尾部字段可能省略。
 
 原生 `used-tokens` 使用 Codex 自己的口径：输入扣除缓存读取后再加输出；Token Tracker 的 `Total` 包含缓存读取，因此同一会话的两个数字可能不同。[Codex 0.156.1 源码](https://github.com/openai/codex/blob/rust-v0.156.1/codex-rs/tui/src/token_usage.rs)
 
@@ -75,7 +75,7 @@ tmux 状态栏每 10 秒刷新一次；两行内容左侧留两个字符，底�
 - **L1** `[项目](分支 +A -D) | Total: <会话累计 token> | Model: <模型 推理强度>` —— Total 橙、Model 红；第三方 API provider（如 DeepSeek）无订阅配额，L1 加显示会话 Cost（按逐请求时间与上下文档位套用内置官方价估算）
 - **L2** `Limit: 5h <进度条> % (reset <倒计时>) | 7d <进度条> % (reset <倒计时>) | <窗口> Ctx <进度条> %` —— 配额按当前会话 / 同 model_provider 取数，多账号多 provider 混跑不串数据；无配额数据时不挂 `Limit:` 前缀
 
-底部窗格渲染 24-bit 真彩色，配色跟随启动时的当前主题（与 CLI 报表 / CC 状态栏同源）；更换主题后重新打开窗格。`tt unsetup` 移除托管 Hook，已打开的底部窗格需自行退出。
+底部窗格渲染 24-bit 真彩色，配色跟随启动时的当前主题（与 CLI 报表 / CC 状态栏同源）；更换主题后重新打开窗格。iTerm2 Hook 的上色由上述动态 Profile 完成，不把 ANSI 控制码交给 Codex。`tt unsetup` 移除托管 Hook，已打开的底部窗格需自行退出。
 
 ### Kimi Code（官方接口）
 

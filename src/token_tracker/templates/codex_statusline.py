@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""token-tracker Codex 状态摘要：Stop hook 静默记录终端映射，--direct 向终端输出两行真彩色状态。
+"""token-tracker Codex 状态摘要：iTerm2 Stop hook 输出无 ANSI 摘要，--direct 输出真彩色状态。
 L1：[项目](分支 +A -D) | Total: <会话累计 token> | Cost: $<第三方 provider 会话成本> | Model: <模型>
 L2：Limit: 5h <bar> <%> (reset) | 7d <bar> <%> (reset) | <window> Ctx <bar> <%>
 数据：单次扫描当前会话同时取得 Total、逐请求成本和 5h/7d 限额；当前会话没有标准限额时，按
@@ -9,6 +9,7 @@ Model = Stop payload.model；会话按 transcript_path 精确定位、回退最�
 __version__ = "__STATUSLINE_HOOK_VERSION__"
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -272,7 +273,8 @@ def main():
             snapshot, exact_session = _current_session(payload)
             terminal_session_id = snapshot.session_id if snapshot and exact_session else ""
         _record_terminal_map(terminal_session_id)
-        return
+        if not os.environ.get("ITERM_SESSION_ID") or os.environ.get("TMUX_PANE"):
+            return
 
     snapshot, exact_session = _current_session(payload)
     cwd = snapshot.cwd if snapshot else ""
@@ -335,7 +337,11 @@ def main():
 
     lines = [" | ".join(x) for x in (line1, line2) if x]
     if lines:
-        print("\n".join(lines))
+        rendered = "\n".join(lines)
+        if direct:
+            print(rendered)
+        else:
+            print(json.dumps({"systemMessage": re.sub(r"\x1b\[[0-9;]*m", "", rendered)}))
 
 
 if __name__ == "__main__":

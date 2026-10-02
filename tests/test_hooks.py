@@ -9,7 +9,7 @@ import tomllib
 
 import pytest
 
-from token_tracker import config, hooks, i18n, sidebar_install
+from token_tracker import codex_iterm_profile, config, hooks, i18n, sidebar_install
 
 
 @pytest.fixture(autouse=True)
@@ -56,6 +56,7 @@ def _isolate_real_home(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TERMINAL_MAP_FILE", str(cfg / "tt-terminal-map.json"))
     monkeypatch.setattr(config, "_LEGACY_THEME_PATH", str(cfg / "theme.json"))
     monkeypatch.setattr(config, "_LEGACY_LANG_PATH", str(cfg / "lang.json"))
+    monkeypatch.setattr(codex_iterm_profile, "PROFILE_PATH", tmp_path / "iterm-profile.json")
 
 
 def test_all_path_constants_are_isolated():
@@ -208,7 +209,7 @@ def test_codex_statusline_render_injects_version():
     compile(rendered, "<codex-statusline>", "exec")
 
 
-def test_codex_statusline_hook_silent_and_terminal_direct_colored(tmp_path):
+def test_codex_statusline_hook_iterm_plain_and_terminal_direct_colored(tmp_path):
     script = tmp_path / "codex-statusline.py"
     script.write_text(hooks._render_codex_statusline_hook(), encoding="utf-8")
     rollout = tmp_path / "session.jsonl"
@@ -226,7 +227,10 @@ def test_codex_statusline_hook_silent_and_terminal_direct_colored(tmp_path):
 
     hooked = subprocess.run([sys.executable, str(script)], input=payload, text=True,
                             capture_output=True, check=True, env=env)
-    assert hooked.stdout == ""
+    status = json.loads(hooked.stdout)["systemMessage"]
+    assert "Total: 1.2M" in status
+    assert "Model: gpt-6-sol high" in status
+    assert "\x1b" not in status and "[38;" not in status
     assert hooked.stderr == ""
     direct = subprocess.run([sys.executable, str(script), "--direct"], input=payload, text=True,
                             capture_output=True, check=True, env=env)
@@ -235,6 +239,37 @@ def test_codex_statusline_hook_silent_and_terminal_direct_colored(tmp_path):
     # 辅助窗格不能覆盖源窗格的 session→terminal 映射。
     term_map = json.loads((tmp_path / ".config/token-tracker/tt-terminal-map.json").read_text())
     assert term_map["_terminal_map"]["session-1"]["iterm"] == "w0t0:source"
+
+    tmux = subprocess.run([sys.executable, str(script)], input=payload, text=True,
+                          capture_output=True, check=True, env={**env, "TMUX_PANE": "%7"})
+    assert tmux.stdout == "" and tmux.stderr == ""
+    no_iterm = subprocess.run([sys.executable, str(script)], input=payload, text=True,
+                               capture_output=True, check=True,
+                               env={k: v for k, v in env.items() if k != "ITERM_SESSION_ID"})
+    assert no_iterm.stdout == "" and no_iterm.stderr == ""
+
+
+def test_codex_iterm_trigger_colors_follow_theme(tmp_path, monkeypatch):
+    profile_path = tmp_path / "iterm-profile.json"
+    monkeypatch.setattr(codex_iterm_profile, "PROFILE_PATH", profile_path)
+    triggers = [{"regex": str(i), "action": "HighlightTrigger", "parameter": "{#000000,}"}
+                for i in range(11)]
+    profile_path.write_text(json.dumps({"Profiles": [
+        {"Name": "Other", "Triggers": [{"action": "HighlightTrigger", "parameter": "untouched"}]},
+        {"Name": codex_iterm_profile.PROFILE_NAME, "Guid": codex_iterm_profile.PROFILE_GUID,
+         "Triggers": triggers},
+    ]}), encoding="utf-8")
+    assert codex_iterm_profile.sync_trigger_colors("mocha")
+    result = json.loads(profile_path.read_text(encoding="utf-8"))["Profiles"]
+    assert result[0]["Triggers"][0]["parameter"] == "untouched"
+    assert result[1]["Triggers"][0]["parameter"] == "{#a6e3a1,}"
+    assert result[1]["Triggers"][4]["parameter"] == "{#fab387,}"
+    assert result[1]["Triggers"][10]["parameter"] == "{#f38ba8,}"
+    monkeypatch.setattr(config, "resolve_theme", lambda: "latte")
+    hooks._write_codex_statusline_script()  # tt setup / tt theme set 共用此入口
+    result = json.loads(profile_path.read_text(encoding="utf-8"))["Profiles"]
+    assert result[1]["Triggers"][0]["parameter"] == "{#40a02b,}"
+    assert result[1]["Triggers"][4]["parameter"] == "{#fe640b,}"
 
 
 def test_codex_statusline_records_terminal_map_without_touching_cc_status(tmp_path):
