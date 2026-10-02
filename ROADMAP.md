@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境保留。真实 Codex TUI 彩色显示尚待用户验收；分支未推送 GitHub。`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
+个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 的 iTerm2 Hook 纯文本摘要与主题同步代码已通过自动化检查；用户级 `tt` 已从本地分支提交 `150e3f1` 切至 `0.7.0`，旧 `0.5.7` 环境和切换前备份已按用户要求删除。真实 Codex TUI 彩色显示尚待用户验收；分支未推送 GitHub。`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
 
 ## 上游进度存档
 
@@ -183,6 +183,7 @@
 
 ## 最近验证
 
+- 2026-10-02：用户明确要求删除切换前的 7 个备份文件及旧 `0.5.7` 虚拟环境。删除前确认现用 Codex／Claude 配置、sidebar、`tt` 软链接均不再引用旧解释器，`ps` 未发现旧环境进程；精确删除 `~/.config/token-tracker/backups/pre-wandaifa-0.7.0-20261002`（约 56 KB）和 `~/.local/share/token-tracker/venv`（约 43 MB），随后移除各自空父目录。独立命令复验目标均不存在、`tt --version` 仍为 `0.7.0`、Codex Stop 命令仍指向新环境；真实 JSONL 再跑 Hook 得到两行无 ANSI 摘要、退出码 0。本次为永久删除，无旧环境本地回退副本。
 - 2026-10-02：用户明确要求本机切换到 fork 的 `0.7.0`。从本地 Git 提交 `150e3f1` 安装独立虚拟环境，`direct_url.json` 精确指向该提交；保留原 `0.5.7` 虚拟环境，在 `~/.config/token-tracker/backups/pre-wandaifa-0.7.0-20261002` 保存原 Codex／Claude 配置、脚本、sidebar Skill 与 iTerm Profile。`tt --version` 实测 `0.7.0`，Codex Stop／UserPromptSubmit 和 Claude statusLine 均指向新解释器，Codex 脚本版本 `2.2`；新 Hook 读取真实 Codex JSONL 手动执行得到两行合法 `systemMessage`，退出码 0、stderr 为空、ANSI／残缺 SGR 均为零。iTerm Profile 11 条规则存在；实际 TUI 视觉效果待用户验收，GitHub 未推送。
 - 2026-10-02：本地独立分支 `feature/codex-iterm-trigger-statusline` 增加 iTerm2 非 tmux Hook 无 ANSI JSON 摘要，`--direct` 和 tmux 静默路径保留；既有 GUID 限定动态 Profile 的 11 条 HighlightTrigger 颜色跟随 `tt setup`／`tt theme set`。版本升至 `0.7.0`，`pyproject.toml`／`uv.lock` 与项目 `.venv/bin/tt --version` 一致；定向 82 passed、全量 424 passed，Ruff、mypy、`git diff --check` 通过。切换前用户级 `tt --version` 为 `0.5.7`；当时真实 Codex 界面与用户级安装未验证，GitHub 未推送。
 - 2026-09-25：`~/.zshrc` 现有 `codex()` 仅对无参数交互启动新增自动 tmux 分支，保留 `-ds`、`-k` 和其他参数分支；`zsh -n` 通过，模拟新窗口确认 `tmux new-session` 带当前工作目录及状态栏启动命令，`codex --version` 仍返回原生 `0.156.1`。独立 tmux 会话验证 `$HOME/.local/bin/tt statusbar tmux` 可写入两行内容加底部空白行；新 iTerm2 窗口的真实启动待验收。
