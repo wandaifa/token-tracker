@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-`0.7.1` 计费同步候选已完成源码与安装包验证，待用户确认用户级安装。基于实际已安装的 `150e3f1`／`0.7.0` 建立隔离分支 `fix/upstream-pricing-0.7.1`，仅同步官方 `990ef700` 的计费与模型名称；iTerm2 彩色摘要、tmux 固定底栏及真实配置保持。实际用户安装仍是 `0.7.0`，原 `feature/codex-iterm-trigger-statusline` 的 `0.8.0` 工作区未改动。
+`0.7.1` 已按用户本轮确认安装到现有私有 venv，并通过版本、包文件、计费与真实会话渲染复验。基于实际已安装的 `150e3f1`／`0.7.0` 建立隔离分支 `fix/upstream-pricing-0.7.1`，仅同步官方 `990ef700` 的计费与模型名称；iTerm2 彩色摘要、tmux 固定底栏及 8 份真实配置保持。原 `feature/codex-iterm-trigger-statusline` 的 `0.8.0` 未安装；后续按用户意向移除项目 tmux 支持，跨模块方案尚待确认。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-11-16：按用户本轮「可以」确认以本地 wheel、`--no-deps --no-index` 更新既有私有 venv 至 `0.7.1`；CLI 与元数据版本一致、46 个运行文件与验收包逐字节一致，实际安装代码的 236 项计费测试通过，现有 Hook 在当前真实会话输出两行、47 个 ANSI 标记；8 份配置指纹一致，未执行 setup／新增依赖。
 - 2026-11-16：`0.7.1` 计费同步候选：官方 `0.5.9` 的模型报价、阶梯／峰谷与节假日计费及模型名称已合入；源代码与实际 wheel 各 567 项测试通过，Ruff／mypy 通过；当前真实 Codex 会话两行渲染与已装 `0.7.0` 逐字一致。此项仅指候选验收，用户级安装未执行。
 - 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
 - 2026-09-24：定位 Codex Stop Hook 显示问题与可行界面：模板把 ANSI 配色写入 `systemMessage`，当前 Codex 按 Hook 消息展示；现有 Textual sidebar 的直接终端输出可产生 ANSI 色彩。仅完成诊断，没有声称界面集成已经实测。
@@ -156,7 +157,6 @@
 
 ## 进行中
 
-- `0.7.1` 用户级安装：候选源码、wheel、旧版备份均已核验；安装会写入工作目录外的既有用户工具，待用户单独确认。计划使用本地 wheel、`--no-deps --no-index`，不执行 `tt setup`，不改 Hook、主题、Profile 或 shell 配置。
 - `feature/codex-iterm-trigger-statusline`：本地代码和自动化检查已通过；待真实 Codex 0.159.2 ＋ iTerm2 Profile 视觉验收，再决定用户级安装与 GitHub 推送。不可把 Hook 消息区当作固定底栏。
 - 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
@@ -164,6 +164,7 @@
 
 ## 待办
 
+- **后续移除项目 tmux 支持（用户意向已记录，尚未实施）**：覆盖固定底栏、sidebar 分屏／点击跳转、终端映射、相关模板判断、测试及说明；保留普通 iTerm2 彩色摘要。先给跨模块移除方案，再经用户确认实施。2026-11-16 本机当前会话未进入 tmux，`.zshrc`／`.zprofile` 精确检索均无 tmux 入口，`.tmux.conf` 不存在；不可照旧文档删除启动设置。系统卸载／目录外设置修改另按红线确认。
 - **Codex 非标准服务档计价（待确认日志字段）**：Astra 官方 Fast 为适用标准价的 2 倍，Flex 为 0.5 倍；当前抽查的 3 个真实 Astra 会话无可核实的 `service_tier`，继续按标准价估算。后续以逐请求实际生效档位为准，不从当前用户配置或模型名推断整段历史的倍率。
 - **`tt sidebar` 点击跳转补 Ghostty（未启动）**：自动分屏已支持 Ghostty（2026-08-03），但总览「点头行跳窗格」仍只有 tmux（`TMUX_PANE` 映射）/ iTerm2（`ITERM_SESSION_ID` 映射）——三套 statusline 模板只采集这两类，`ui/sidebar_app._jump_argvs` 也只认这两类，Ghostty 会话头行当前不可点。Ghostty 无 per-pane 环境变量，statusline 渲染期不宜调 osascript（300ms 预算）；可行路径是点击时懒算：AppleScript `every terminal whose working directory is <会话 cwd>` 匹配后 `focus`（多窗格同项目时有歧义，需定优先级，如取 front window 首个匹配），或推动 Ghostty 暴露 surface id 环境变量后再走精确映射。README 对点击跳转的「iTerm2 / tmux」描述在补齐前保持现状（是准确描述，非遗漏）。
 - **自动 1/3 分屏跟随原会话退出（独立后续，未实现）**：不监听 `/quit` 文本，改由 `$tt-sidebar` launcher 沿父进程树定位原生 Codex PID 并传给 split；macOS 用 `kqueue` `EVFILT_PROC + NOTE_EXIT`、Linux 用 `pidfd` 阻塞等待真实进程退出，收到事件后退出 Textual 并关闭配对 pane。该路径应覆盖 `/quit`、`/exit`、崩溃和原 pane 关闭，不增加 transcript / SQLite 监听或周期 timer；iTerm2 `jobName` 变量监听只作终端专属备用，shell wrapper 需改变启动方式，均不作为主实现。Claude Code 继续优先使用官方 `SessionEnd`，强杀再走同类进程兜底。
@@ -185,6 +186,7 @@
 
 ## 最近验证
 
+- 2026-11-16：安装前复验 wheel SHA256 和旧安装 56 文件备份均一致，执行本地无依赖安装成功（`0.7.0→0.7.1`）。独立 CLI `tt --version` 为 0.7.1；46 文件与 wheel 相同、安装代码计费 236 passed、真实现有脚本两行／47 ANSI，8 份配置指纹保持。未执行 setup、未启动常驻进程、未推送或公开发布；旧版备份保留在临时目录，用户级安装确认已消费，不重放。
 - 2026-11-16：先用官方新增 108 项用例在原 `0.7.0` 复现 72 项失败，再同步官方计费与名称两个运行文件；计费相关 236 项通过，源代码与安装包完整测试分别 567 passed，Ruff／mypy（43 个源文件）及 diff 检查通过。wheel `token_tracker-0.7.1-py3-none-any.whl`（173452 字节，SHA256 `9c0453236011aa6ae990fd8bee7eade64fb181e673b3165302b9f0d67978f9de`）的 46 个运行文件与候选逐字节一致；实际当前会话的两行渲染及 47 个 ANSI 标记与原安装相同（未声称新终端界面视觉验收）。8 份真实配置指纹一致；旧安装 56 文件备份 ZIP 已校验。未安装用户工具、未改原工作区、未推送／发布、未启动常驻服务。
 - 2026-10-02：本地独立分支 `feature/codex-iterm-trigger-statusline` 增加 iTerm2 非 tmux Hook 无 ANSI JSON 摘要，`--direct` 和 tmux 静默路径保留；既有 GUID 限定动态 Profile 的 11 条 HighlightTrigger 颜色跟随 `tt setup`／`tt theme set`。版本升至 `0.7.0`，`pyproject.toml`／`uv.lock` 与项目 `.venv/bin/tt --version` 一致；定向 82 passed、全量 424 passed，Ruff、mypy、`git diff --check` 通过。当前用户级 `tt --version` 为 `0.5.7`；真实 Codex 界面与用户级安装未验证，GitHub 未推送。
 - 2026-09-25：`~/.zshrc` 现有 `codex()` 仅对无参数交互启动新增自动 tmux 分支，保留 `-ds`、`-k` 和其他参数分支；`zsh -n` 通过，模拟新窗口确认 `tmux new-session` 带当前工作目录及状态栏启动命令，`codex --version` 仍返回原生 `0.156.1`。独立 tmux 会话验证 `$HOME/.local/bin/tt statusbar tmux` 可写入两行内容加底部空白行；新 iTerm2 窗口的真实启动待验收。
