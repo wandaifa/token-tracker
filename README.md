@@ -1,5 +1,7 @@
 # Token Tracker (tt)
 
+本分支 `0.7.1` 基于已安装的 `0.7.0`，同步官方 `0.5.9` 的模型报价、阶梯／时段计费及模型名称；保留 iTerm2 彩色摘要与 tmux 固定底栏，不包含独立 `0.8.0` 的 Profile 自动创建改动。
+
 本地 AI Agent Token 消耗追踪/分析工具，支持 **Claude Code**、**Codex** 和 **Kimi Code**。
 
 自定义 StatusLine 状态栏 + CLI Dashboard，实时查看 token 用量、等效成本、限额状态。

@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-个人 fork 的 `main` 仍保持 Codex tmux 两行彩色状态方案（`0.6.3`）。独立分支 `feature/codex-iterm-trigger-statusline` 已实现 iTerm2 非 tmux Hook 的纯文本摘要和既有动态 Profile 的主题颜色同步，本地分支版本 `0.7.0` 的代码测试已通过；真实 Codex 界面与用户级安装尚未验收，分支未推送。当前 PATH 上的用户级 `tt` 实测仍为 `0.5.7`，项目 `.venv/bin/tt` 为 `0.7.0`，不要将历史安装记录当作当前状态。`~/.zshrc` 的新窗口自动 tmux 启动仍待真实验收。
+`0.7.1` 计费同步候选已完成源码与安装包验证，待用户确认用户级安装。基于实际已安装的 `150e3f1`／`0.7.0` 建立隔离分支 `fix/upstream-pricing-0.7.1`，仅同步官方 `990ef700` 的计费与模型名称；iTerm2 彩色摘要、tmux 固定底栏及真实配置保持。实际用户安装仍是 `0.7.0`，原 `feature/codex-iterm-trigger-statusline` 的 `0.8.0` 工作区未改动。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-11-16：`0.7.1` 计费同步候选：官方 `0.5.9` 的模型报价、阶梯／峰谷与节假日计费及模型名称已合入；源代码与实际 wheel 各 567 项测试通过，Ruff／mypy 通过；当前真实 Codex 会话两行渲染与已装 `0.7.0` 逐字一致。此项仅指候选验收，用户级安装未执行。
 - 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
 - 2026-09-24：定位 Codex Stop Hook 显示问题与可行界面：模板把 ANSI 配色写入 `systemMessage`，当前 Codex 按 Hook 消息展示；现有 Textual sidebar 的直接终端输出可产生 ANSI 色彩。仅完成诊断，没有声称界面集成已经实测。
 - 2026-09-24：本地开发版升至 `0.6.0`；Stop Hook 输出无色两行摘要，`tt statusbar split` 在 iTerm2 当前 Codex 窗格底部打开独立彩色状态栏，直接复用同一份渲染模板并按会话 ID 读取 JSONL。真实会话的单次渲染、窗格彩色截图和 3 行布局已核验；421 项测试、Ruff、mypy 与锁文件版本检查通过。用户级安装仍待执行。
@@ -155,6 +156,7 @@
 
 ## 进行中
 
+- `0.7.1` 用户级安装：候选源码、wheel、旧版备份均已核验；安装会写入工作目录外的既有用户工具，待用户单独确认。计划使用本地 wheel、`--no-deps --no-index`，不执行 `tt setup`，不改 Hook、主题、Profile 或 shell 配置。
 - `feature/codex-iterm-trigger-statusline`：本地代码和自动化检查已通过；待真实 Codex 0.159.2 ＋ iTerm2 Profile 视觉验收，再决定用户级安装与 GitHub 推送。不可把 Hook 消息区当作固定底栏。
 - 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
@@ -183,6 +185,7 @@
 
 ## 最近验证
 
+- 2026-11-16：先用官方新增 108 项用例在原 `0.7.0` 复现 72 项失败，再同步官方计费与名称两个运行文件；计费相关 236 项通过，源代码与安装包完整测试分别 567 passed，Ruff／mypy（43 个源文件）及 diff 检查通过。wheel `token_tracker-0.7.1-py3-none-any.whl`（173452 字节，SHA256 `9c0453236011aa6ae990fd8bee7eade64fb181e673b3165302b9f0d67978f9de`）的 46 个运行文件与候选逐字节一致；实际当前会话的两行渲染及 47 个 ANSI 标记与原安装相同（未声称新终端界面视觉验收）。8 份真实配置指纹一致；旧安装 56 文件备份 ZIP 已校验。未安装用户工具、未改原工作区、未推送／发布、未启动常驻服务。
 - 2026-10-02：本地独立分支 `feature/codex-iterm-trigger-statusline` 增加 iTerm2 非 tmux Hook 无 ANSI JSON 摘要，`--direct` 和 tmux 静默路径保留；既有 GUID 限定动态 Profile 的 11 条 HighlightTrigger 颜色跟随 `tt setup`／`tt theme set`。版本升至 `0.7.0`，`pyproject.toml`／`uv.lock` 与项目 `.venv/bin/tt --version` 一致；定向 82 passed、全量 424 passed，Ruff、mypy、`git diff --check` 通过。当前用户级 `tt --version` 为 `0.5.7`；真实 Codex 界面与用户级安装未验证，GitHub 未推送。
 - 2026-09-25：`~/.zshrc` 现有 `codex()` 仅对无参数交互启动新增自动 tmux 分支，保留 `-ds`、`-k` 和其他参数分支；`zsh -n` 通过，模拟新窗口确认 `tmux new-session` 带当前工作目录及状态栏启动命令，`codex --version` 仍返回原生 `0.156.1`。独立 tmux 会话验证 `$HOME/.local/bin/tt statusbar tmux` 可写入两行内容加底部空白行；新 iTerm2 窗口的真实启动待验收。
 - 2026-09-25：用户提供 `0.6.3` 当前会话截图：原生状态行与 Token Tracker 两行左侧对齐；Token Tracker 第二行下方可见一行空白，再到 iTerm2 状态栏。截图显示 Total、Model、5h、7d、Ctx 与彩色进度条均正常。
