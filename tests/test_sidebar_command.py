@@ -65,20 +65,6 @@ def test_current_sessions_scans_all_agents_and_keeps_all_prompts(monkeypatch):
     }
 
 
-def test_open_tmux_requests_right_one_third(monkeypatch, tmp_path):
-    succeeded = subprocess.CompletedProcess(["tmux"], 0, "", "")
-    run = MagicMock(return_value=succeeded)
-    monkeypatch.setattr(sidebar_command, "_run", run)
-    monkeypatch.chdir(tmp_path)
-
-    ok, _message = sidebar_command._open_tmux("%7", "thread")
-
-    assert ok
-    argv = run.call_args.args[0]
-    assert argv[:6] == ["tmux", "split-window", "-h", "-p", "33", "-t"]
-    assert argv[6:9] == ["%7", "-c", str(tmp_path)]
-
-
 def test_open_iterm_runs_packaged_worker_with_same_python(monkeypatch):
     succeeded = subprocess.CompletedProcess(["iterm"], 0, "tt_sidebar_split_ok", "")
     run = MagicMock(return_value=succeeded)
@@ -176,7 +162,7 @@ def test_open_split_rejects_unsupported_terminal(monkeypatch, capsys):
     monkeypatch.delenv("TERM_PROGRAM", raising=False)
 
     assert sidebar_command.open_split() == 1
-    assert "tmux、iTerm2 或 Ghostty" in capsys.readouterr().err
+    assert "iTerm2 或 Ghostty" in capsys.readouterr().err
 
 
 def test_main_routes_actions(monkeypatch):

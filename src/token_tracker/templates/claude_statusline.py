@@ -379,13 +379,11 @@ def main():
         for k in list(state)[:-20]:
             del state[k]
         # 终端定位（tt sidebar 点击跳转用）：statusline 是 CC 子进程，继承会话所在
-        # 终端的环境——iTerm2 每窗格注入 ITERM_SESSION_ID、tmux 注入 TMUX_PANE。
+        # 终端的环境——iTerm2 每窗格注入 ITERM_SESSION_ID。
         # 按 session_id 并回共享 map（同 _tps_state 的合并/LRU 语义）。
         term = {}
         if os.environ.get("ITERM_SESSION_ID"):
             term["iterm"] = os.environ["ITERM_SESSION_ID"]
-        if os.environ.get("TMUX_PANE"):
-            term["tmux"] = os.environ["TMUX_PANE"]
         term_map.pop(session_id, None)
         term_map[session_id] = term
         for k in list(term_map)[:-20]:

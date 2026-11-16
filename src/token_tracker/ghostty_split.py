@@ -246,7 +246,7 @@ def _failure_message(output: str) -> str:
 
 def _run_split(command: str, cwd: str) -> tuple[bool, str]:
     if sys.platform != "darwin":
-        return False, "Ghostty 自动分屏仅支持 macOS（Linux 下请在 tmux 中使用 $tt-sidebar）。"
+        return False, "Ghostty 自动分屏仅支持 macOS。"
     ok, message = _probe_ghostty()
     if not ok:
         return False, message

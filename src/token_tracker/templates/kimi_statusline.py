@@ -234,13 +234,11 @@ def _record_terminal_map(session_id):
     """记录当前 Kimi 会话所在窗格，供普通 `tt sidebar` 点击项目名跳转。
 
     与 Codex 共用一个文件一个 schema（sidebar 读取时对 agent 无差别合并）；多实例并发
-    read-modify-write 用 flock 串行（Windows 无 iTerm/tmux，缺 fcntl 时仍保留原子替换兜底）。
+    read-modify-write 用 flock 串行（Windows 无 iTerm2，缺 fcntl 时仍保留原子替换兜底）。
     """
     term = {}
     if os.environ.get("ITERM_SESSION_ID"):
         term["iterm"] = os.environ["ITERM_SESSION_ID"]
-    if os.environ.get("TMUX_PANE"):
-        term["tmux"] = os.environ["TMUX_PANE"]
     if not session_id or not term:
         return
 

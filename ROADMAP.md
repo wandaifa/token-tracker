@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-`0.7.1` 已按用户本轮确认安装到现有私有 venv，并通过版本、包文件、计费与真实会话渲染复验。基于实际已安装的 `150e3f1`／`0.7.0` 建立隔离分支 `fix/upstream-pricing-0.7.1`，仅同步官方 `990ef700` 的计费与模型名称；iTerm2 彩色摘要、tmux 固定底栏及 8 份真实配置保持。原 `feature/codex-iterm-trigger-statusline` 的 `0.8.0` 未安装；后续按用户意向移除项目 tmux 支持，跨模块方案尚待确认。
+`0.9.0` 已按用户确认完整移除项目 tmux 支持并更新现有私有安装。固定底栏命令、分屏、点击跳转和三 Agent 映射逻辑及 Skill 指引已清理；iTerm2 彩色摘要／原生分屏、Ghostty 原生分屏和官方计费更新保留。源码与 wheel 各 565 项测试通过，实际安装命令拒绝旧入口、真实会话渲染通过；9 份注册／主题／终端／shell 配置保持。原 `0.8.0` 候选仅保留在历史分支，未启用。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-11-16：`0.9.0` 移除项目 tmux 支持并完成本机更新：固定底栏子命令、sidebar 分屏／跳转、三 Agent 映射和托管 Skill 指引均清理；包内 46 文件无 tmux 引用，与安装逐字节一致。两个旧命令实际返回 argparse 退出码 2，旧环境变量不再触发分屏；当前真实会话两行／47 ANSI 标记保持，3 个托管文件已定向更新，9 份配置未改变。旧安装与产物 59 文件已备份核验。
 - 2026-11-16：按用户本轮「可以」确认以本地 wheel、`--no-deps --no-index` 更新既有私有 venv 至 `0.7.1`；CLI 与元数据版本一致、46 个运行文件与验收包逐字节一致，实际安装代码的 236 项计费测试通过，现有 Hook 在当前真实会话输出两行、47 个 ANSI 标记；8 份配置指纹一致，未执行 setup／新增依赖。
 - 2026-11-16：`0.7.1` 计费同步候选：官方 `0.5.9` 的模型报价、阶梯／峰谷与节假日计费及模型名称已合入；源代码与实际 wheel 各 567 项测试通过，Ruff／mypy 通过；当前真实 Codex 会话两行渲染与已装 `0.7.0` 逐字一致。此项仅指候选验收，用户级安装未执行。
 - 2026-09-24：确认个人 GitHub 上已存在上游 fork，将落后 131 个提交且无个人领先提交的 `main` 快进同步到上游同一提交，并克隆到 AiCodeProject；远端提交与本地仓库均已独立核对。
@@ -158,15 +159,13 @@
 ## 进行中
 
 - `feature/codex-iterm-trigger-statusline`：本地代码和自动化检查已通过；待真实 Codex 0.159.2 ＋ iTerm2 Profile 视觉验收，再决定用户级安装与 GitHub 推送。不可把 Hook 消息区当作固定底栏。
-- 在新 iTerm2 窗口直接运行 `codex`，验收自动创建 tmux 会话、首轮回答后两行状态可见；目前已通过 shell 语法、模拟启动和独立 tmux 配置测试。
 
 
 
 ## 待办
 
-- **后续移除项目 tmux 支持（用户意向已记录，尚未实施）**：覆盖固定底栏、sidebar 分屏／点击跳转、终端映射、相关模板判断、测试及说明；保留普通 iTerm2 彩色摘要。先给跨模块移除方案，再经用户确认实施。2026-11-16 本机当前会话未进入 tmux，`.zshrc`／`.zprofile` 精确检索均无 tmux 入口，`.tmux.conf` 不存在；不可照旧文档删除启动设置。系统卸载／目录外设置修改另按红线确认。
 - **Codex 非标准服务档计价（待确认日志字段）**：Astra 官方 Fast 为适用标准价的 2 倍，Flex 为 0.5 倍；当前抽查的 3 个真实 Astra 会话无可核实的 `service_tier`，继续按标准价估算。后续以逐请求实际生效档位为准，不从当前用户配置或模型名推断整段历史的倍率。
-- **`tt sidebar` 点击跳转补 Ghostty（未启动）**：自动分屏已支持 Ghostty（2026-08-03），但总览「点头行跳窗格」仍只有 tmux（`TMUX_PANE` 映射）/ iTerm2（`ITERM_SESSION_ID` 映射）——三套 statusline 模板只采集这两类，`ui/sidebar_app._jump_argvs` 也只认这两类，Ghostty 会话头行当前不可点。Ghostty 无 per-pane 环境变量，statusline 渲染期不宜调 osascript（300ms 预算）；可行路径是点击时懒算：AppleScript `every terminal whose working directory is <会话 cwd>` 匹配后 `focus`（多窗格同项目时有歧义，需定优先级，如取 front window 首个匹配），或推动 Ghostty 暴露 surface id 环境变量后再走精确映射。README 对点击跳转的「iTerm2 / tmux」描述在补齐前保持现状（是准确描述，非遗漏）。
+- **`tt sidebar` 点击跳转补 Ghostty（未启动）**：自动分屏已支持 Ghostty（2026-08-03），但总览「点头行跳窗格」仍只有 iTerm2（`ITERM_SESSION_ID` 映射）——三套 statusline 模板只采集这两类，`ui/sidebar_app._jump_argvs` 也只认这两类，Ghostty 会话头行当前不可点。Ghostty 无 per-pane 环境变量，statusline 渲染期不宜调 osascript（300ms 预算）；可行路径是点击时懒算：AppleScript `every terminal whose working directory is <会话 cwd>` 匹配后 `focus`（多窗格同项目时有歧义，需定优先级，如取 front window 首个匹配），或推动 Ghostty 暴露 surface id 环境变量后再走精确映射。README 对点击跳转的「iTerm2 / tmux」描述在补齐前保持现状（是准确描述，非遗漏）。
 - **自动 1/3 分屏跟随原会话退出（独立后续，未实现）**：不监听 `/quit` 文本，改由 `$tt-sidebar` launcher 沿父进程树定位原生 Codex PID 并传给 split；macOS 用 `kqueue` `EVFILT_PROC + NOTE_EXIT`、Linux 用 `pidfd` 阻塞等待真实进程退出，收到事件后退出 Textual 并关闭配对 pane。该路径应覆盖 `/quit`、`/exit`、崩溃和原 pane 关闭，不增加 transcript / SQLite 监听或周期 timer；iTerm2 `jobName` 变量监听只作终端专属备用，shell wrapper 需改变启动方式，均不作为主实现。Claude Code 继续优先使用官方 `SessionEnd`，强杀再走同类进程兜底。
 - **GitHub issue / PR 状态重新核对**：本地确认 #16 / #17 / #19 对应功能已经落地；外部 open/closed 状态在实际处理前重新查询，不沿用 2026-07-04 的旧快照。
 - 桌面版（Tauri）规划：图表可视化、数据钻取、实时监控、多 Agent 多模型监控（仅规划，未启动）
@@ -186,6 +185,7 @@
 
 ## 最近验证
 
+- 2026-11-16：先以 3 个回归复现旧命令／跳转／Skill 仍支持 tmux，再移除对应代码。相关 193 项通过、完整源码及实际 wheel 各 565 passed，Ruff／mypy（43 文件）及 diff 检查通过。wheel 171630 字节、SHA256 `dee8e2c208600499131439c6f93596d5614022544f806b8b33c1973227472620`，46 文件与源／安装一致；真实渲染与旧版逐字一致，实际安装 `tt --version` 为 0.9.0。已更新 Claude 2.2／Codex 2.3 两脚本及托管 Skill，不执行 setup／update_hook。`needs_update()` 的旧 Hook 排序检查仍为 true：两条 CLI Agents handler 在 tt 后，现有同步器会将 tt 移至末尾；该代码及 hooks.json 与 0.7.1 相同，未在本轮调整。未关闭会话、未新启常驻进程、未新增依赖或推送／发布。
 - 2026-11-16：安装前复验 wheel SHA256 和旧安装 56 文件备份均一致，执行本地无依赖安装成功（`0.7.0→0.7.1`）。独立 CLI `tt --version` 为 0.7.1；46 文件与 wheel 相同、安装代码计费 236 passed、真实现有脚本两行／47 ANSI，8 份配置指纹保持。未执行 setup、未启动常驻进程、未推送或公开发布；旧版备份保留在临时目录，用户级安装确认已消费，不重放。
 - 2026-11-16：先用官方新增 108 项用例在原 `0.7.0` 复现 72 项失败，再同步官方计费与名称两个运行文件；计费相关 236 项通过，源代码与安装包完整测试分别 567 passed，Ruff／mypy（43 个源文件）及 diff 检查通过。wheel `token_tracker-0.7.1-py3-none-any.whl`（173452 字节，SHA256 `9c0453236011aa6ae990fd8bee7eade64fb181e673b3165302b9f0d67978f9de`）的 46 个运行文件与候选逐字节一致；实际当前会话的两行渲染及 47 个 ANSI 标记与原安装相同（未声称新终端界面视觉验收）。8 份真实配置指纹一致；旧安装 56 文件备份 ZIP 已校验。未安装用户工具、未改原工作区、未推送／发布、未启动常驻服务。
 - 2026-10-02：本地独立分支 `feature/codex-iterm-trigger-statusline` 增加 iTerm2 非 tmux Hook 无 ANSI JSON 摘要，`--direct` 和 tmux 静默路径保留；既有 GUID 限定动态 Profile 的 11 条 HighlightTrigger 颜色跟随 `tt setup`／`tt theme set`。版本升至 `0.7.0`，`pyproject.toml`／`uv.lock` 与项目 `.venv/bin/tt --version` 一致；定向 82 passed、全量 424 passed，Ruff、mypy、`git diff --check` 通过。当前用户级 `tt --version` 为 `0.5.7`；真实 Codex 界面与用户级安装未验证，GitHub 未推送。

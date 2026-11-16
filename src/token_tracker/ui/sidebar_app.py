@@ -12,7 +12,7 @@ Rich Group 由 _SidebarBody 补 Textual 选择偏移与文本提取；split 选�
 走终端 ANSI 调色板、不糊 Textual 自己的深色底；正文内容色仍由 tt 主题（`_S` 运行时代理）给，
 `tt sidebar --theme <名>` 可临时切。明暗跟随 tt 主题的 is_light。
 本模块 import textual，cli 只在 live 模式延迟 import（照 questionary 先例，日常 tt 启动不加载）。
-点击跳转依赖 statusline 携带 ITERM_SESSION_ID / TMUX_PANE 映射；tmux 与 iTerm2 已支持。
+点击跳转依赖 statusline 携带的 ITERM_SESSION_ID 映射，使用 iTerm2 原生窗格。
 """
 
 import os
@@ -60,14 +60,10 @@ _DUP_PROMPT_WINDOW_SECONDS = 5.0
 def _jump_argvs(info: dict) -> list[list[str]] | None:
     """终端定位 → 跳转命令序列；无可用定位返回 None。
 
-    tmux 优先（零授权、pane 级精确）：select-window 接受 pane 目标、会选中其所在 window。
     iTerm2 走 AppleScript：ITERM_SESSION_ID 形如 "w0t3p0:<UUID>"，session 的 AppleScript
     `id` 即冒号后的 UUID；逐层匹配后选中 tab/session 并把窗口带到最前（首次触发 macOS
     自动化授权弹窗属预期）。
     """
-    if info.get("tmux"):
-        pane = info["tmux"]
-        return [["tmux", "select-window", "-t", pane], ["tmux", "select-pane", "-t", pane]]
     if info.get("iterm"):
         uuid = info["iterm"].rpartition(":")[2]
         # 找不到目标 session 时必须以 error 结束——否则 osascript 静默 rc=0、

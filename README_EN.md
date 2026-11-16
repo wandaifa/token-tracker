@@ -13,7 +13,7 @@ Custom StatusLine integration + CLI Dashboard — see token usage, cost, and rat
 ## Highlights
 
 - **Unified multi-agent tracking** — Claude Code + Codex + Kimi Code in one place, grouped by source
-- **Status line integration** — Claude Code via its official StatusLine API; Codex uses its native single-line footer or a two-line tmux status bar in the same terminal pane; Kimi Code via its official `status_line` API
+- **Status line integration** — Claude Code via its official StatusLine API; Codex uses its native single-line footer and iTerm2 Hook summary; Kimi Code via its official `status_line` API
 - **Live sidebar** — `tt sidebar` shows all active sessions (Claude Code + Codex + Kimi Code); `$tt-sidebar` in Codex or `/skill:tt-sidebar` in Kimi Code opens a current-session-only pane on the right at one-third width
 - **Rate limit monitoring** — real-time 5h / 7d quota usage with reset countdown
 - **Multi-dimensional cost analysis** — per-session, daily, weekly, monthly cost breakdown
@@ -57,18 +57,18 @@ Built on the Claude Code official custom StatusLine API — **all data comes dir
 
 </details>
 
-### Codex (native footer, iTerm2 Hook summary, or tmux status bar)
+### Codex (native footer and iTerm2 Hook summary)
 
-In iTerm2 outside tmux, Token Tracker's Stop Hook prints two ANSI-free summary lines after each response. The existing “Token Tracker Colors Trial” iTerm2 dynamic profile colors those lines with 11 HighlightTrigger rules; `tt setup` and `tt theme set` synchronize its colors when that profile already exists. Without the selected profile, the text remains readable but uncolored. This is a message in the conversation area, not a fixed footer. In tmux and other terminals the Hook stays silent and only records the session-to-terminal mapping. Codex's native footer still shows a single line. For two persistent lines in the same terminal pane, enter tmux, run `tt statusbar tmux`, then start or resume Codex in that tmux session. The first Codex response maps the session to the active pane. This setting affects only the current tmux session; run it again in a new one. An already-running Codex session outside tmux must be resumed inside tmux.
+In iTerm2, Token Tracker's Stop Hook prints two ANSI-free summary lines after each response. The existing “Token Tracker Colors Trial” iTerm2 dynamic profile colors those lines with 11 HighlightTrigger rules; `tt setup` and `tt theme set` synchronize its colors when that profile already exists. Without the selected profile, the text remains readable but uncolored. This is a message in the conversation area, not a fixed footer. In other terminals the Hook stays silent and only records the session-to-terminal mapping. Codex's native footer still shows a single line.
 
-The tmux bar refreshes every 10 seconds. Its two content rows have two spaces of left padding and one empty terminal row beneath them. The older iTerm2 split-pane option remains available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
+The iTerm2 split-pane option is available with `tt statusbar split`; its pane checks the session file every 5 seconds and refreshes reset countdowns within 30 seconds. Press Ctrl-C in that pane to exit. Use `tt statusbar watch <session-id> --once` to check a single render.
 
 **Two-line layout**:
 
 - **L1** `[project](branch +A -D) | Total: <session tokens> | Model: <model reasoning>` — Total in orange, Model in red; third-party API providers (e.g. DeepSeek) have no subscription quota, so L1 also shows session Cost (estimated from built-in official rates using each request's timestamp and context tier)
 - **L2** `Limit: 5h <bar> % (reset <ttl>) | 7d <bar> % (reset <ttl>) | <window> Ctx <bar> %` — quota is read from the current session / same model_provider, so multiple accounts and providers never cross-contaminate; the `Limit:` prefix is hidden when no quota data exists
 
-The tmux bar converts the current theme's 24-bit colors to tmux status styles. Run `tt statusbar tmux` again after changing themes. `tt unsetup` removes managed hooks; an already-running tmux status bar or iTerm2 pane remains until its session exits.
+The iTerm2 bottom pane renders the current theme in 24-bit color; reopen it after changing themes. `tt unsetup` removes managed hooks; an already-running iTerm2 pane remains until its session exits.
 
 ### Kimi Code (official API)
 
@@ -84,7 +84,7 @@ Built on Kimi Code's official `status_line` API (`tui.toml`) — a single trueco
 
 Run `tt sidebar` in a narrow terminal pane for an all-session overview. In Codex, explicitly invoke `$tt-sidebar` (in Kimi Code: `/skill:tt-sidebar`) to automatically open a separate right-side pane at one-third width containing only the current session's complete prompt history, newest first.
 
-`tt setup` installs the user-level Skill and keeps the faux-statusline `Stop` plus sidebar `UserPromptSubmit` hooks together in the user-level `hooks.json`. Review and trust new or changed Token Tracker hooks with `/hooks`; restart Codex if the new Skill does not appear immediately. The prompt hook only attempts a local FIFO write while a matching sidebar is open—there is no transcript polling, prompt persistence, or upload. iTerm2 no longer requires its Python API; if macOS requests Automation access on first use, allow the app running Codex / `tt` to control iTerm2 / Ghostty. Ghostty (macOS, ≥ 1.3.0) and tmux are supported as well. Native iTerm2 full screen rejects AppleScript column resizing, so exit full screen before invoking the Skill. `tt unsetup` removes the managed Skill and hooks without overwriting a user-owned skill of the same name.
+`tt setup` installs the user-level Skill and keeps the faux-statusline `Stop` plus sidebar `UserPromptSubmit` hooks together in the user-level `hooks.json`. Review and trust new or changed Token Tracker hooks with `/hooks`; restart Codex if the new Skill does not appear immediately. The prompt hook only attempts a local FIFO write while a matching sidebar is open—there is no transcript polling, prompt persistence, or upload. iTerm2 no longer requires its Python API; if macOS requests Automation access on first use, allow the app running Codex / `tt` to control iTerm2 / Ghostty. Ghostty (macOS, ≥ 1.3.0) is supported as well. Native iTerm2 full screen rejects AppleScript column resizing, so exit full screen before invoking the Skill. `tt unsetup` removes the managed Skill and hooks without overwriting a user-owned skill of the same name.
 
 For Kimi Code, `tt setup` installs the Skill to `~/.kimi-code/skills/tt-sidebar` and appends a managed `UserPromptSubmit` entry to the `[[hooks]]` array in `~/.kimi-code/config.toml` (only Token Tracker's own block is added or replaced; all other user config is preserved; the FIFO behavior matches Codex). Kimi Code sessions expose no session-id environment variable, so the launcher locates the current session as the most recently updated session whose `workDir` equals the current directory. The hook takes effect in new sessions.
 

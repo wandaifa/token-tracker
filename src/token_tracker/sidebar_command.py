@@ -46,26 +46,6 @@ def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(argv, capture_output=True, text=True, timeout=_PROCESS_TIMEOUT)
 
 
-def _open_tmux(pane: str, tracked_session_id: str) -> tuple[bool, str]:
-    result = _run(
-        [
-            "tmux",
-            "split-window",
-            "-h",
-            "-p",
-            "33",
-            "-t",
-            pane,
-            "-c",
-            os.getcwd(),
-            _sidebar_command(tracked_session_id),
-        ]
-    )
-    if result.returncode == 0:
-        return True, "已在当前 tmux 会话右侧打开 1/3 宽度的 tt sidebar。"
-    return False, (result.stderr or result.stdout or "tmux 分屏失败").strip()
-
-
 def _open_iterm(iterm_session_id: str, tracked_session_id: str) -> tuple[bool, str]:
     result = _run(
         [
@@ -113,14 +93,12 @@ def open_split() -> int:
         if not tracked_session_id:
             print("无法识别当前 Claude Code / Codex / Kimi Code 会话 ID。", file=sys.stderr)
             return 1
-        if pane := os.environ.get("TMUX_PANE"):
-            ok, message = _open_tmux(pane, tracked_session_id)
-        elif iterm_session_id := os.environ.get("ITERM_SESSION_ID"):
+        if iterm_session_id := os.environ.get("ITERM_SESSION_ID"):
             ok, message = _open_iterm(iterm_session_id, tracked_session_id)
         elif os.environ.get("TERM_PROGRAM") == "ghostty":
             ok, message = _open_ghostty(tracked_session_id)
         else:
-            ok, message = False, "当前终端不受支持；tt-sidebar 自动分屏支持 tmux、iTerm2 或 Ghostty（macOS）。"
+            ok, message = False, "当前终端不受支持；tt-sidebar 自动分屏支持 iTerm2 或 Ghostty（macOS）。"
     except subprocess.TimeoutExpired:
         ok, message = False, f"tt-sidebar 分屏失败：启动器超时（{_PROCESS_TIMEOUT}s）"
     except (OSError, subprocess.SubprocessError) as exc:

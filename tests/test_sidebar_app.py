@@ -17,9 +17,11 @@ from token_tracker.sidebar_events import PromptEvent, prompt_event_from_hook, pr
 from token_tracker.ui.sidebar_app import SidebarApp, _jump_argvs
 
 
-def test_jump_argvs_tmux_takes_priority():
+def test_jump_ignores_removed_backend_and_keeps_iterm():
+    assert _jump_argvs({"tmux": "%5"}) is None
     argvs = _jump_argvs({"tmux": "%5", "iterm": "w0t1p0:AAA"})
-    assert argvs == [["tmux", "select-window", "-t", "%5"], ["tmux", "select-pane", "-t", "%5"]]
+    assert len(argvs) == 1 and argvs[0][0] == "osascript"
+    assert 'if id of s is "AAA"' in argvs[0][2]
 
 
 def test_jump_argvs_iterm_extracts_uuid():

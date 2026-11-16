@@ -532,7 +532,7 @@ def test_read_status_merges_claude_and_codex_terminal_maps(tmp_path, monkeypatch
     status = tmp_path / "tt-status.json"
     status.write_text(json.dumps({
         "session_id": "s-live", "_received_at": datetime.now(UTC).isoformat(),
-        "_terminal_map": {"s-live": {"iterm": "w0t1p0:AAA-BBB", "tmux": "%3"}},
+        "_terminal_map": {"s-live": {"iterm": "w0t1p0:AAA-BBB"}},
     }), encoding="utf-8")
     codex_map = tmp_path / "tt-terminal-map.json"
     codex_map.write_text(json.dumps({
@@ -544,7 +544,7 @@ def test_read_status_merges_claude_and_codex_terminal_maps(tmp_path, monkeypatch
     assert hb is not None and hb[0] == "s-live"
     assert term_map["s-live"]["iterm"] == "w0t1p0:AAA-BBB"
     assert term_map["cx-live"]["iterm"] == "w0t2p0:CODEX"
-    assert sidebar.terminal_info("s-live")["tmux"] == "%3"
+    assert sidebar.terminal_info("s-live") == {"iterm": "w0t1p0:AAA-BBB"}
     assert sidebar.terminal_info("cx-live")["iterm"] == "w0t2p0:CODEX"
     assert sidebar.terminal_info("unknown") == {}
 
@@ -552,13 +552,13 @@ def test_read_status_merges_claude_and_codex_terminal_maps(tmp_path, monkeypatch
 def test_read_status_returns_codex_map_without_claude_status(tmp_path, monkeypatch):
     codex_map = tmp_path / "tt-terminal-map.json"
     codex_map.write_text(json.dumps({
-        "_terminal_map": {"cx-only": {"tmux": "%9"}},
+        "_terminal_map": {"cx-only": {"iterm": "w0t2p0:CODEX"}},
     }), encoding="utf-8")
     monkeypatch.setattr(sidebar.config, "STATUS_FILE", str(tmp_path / "missing-status.json"))
     monkeypatch.setattr(sidebar.config, "TERMINAL_MAP_FILE", str(codex_map))
     hb, term_map = sidebar._read_status()
     assert hb is None
-    assert term_map == {"cx-only": {"tmux": "%9"}}
+    assert term_map == {"cx-only": {"iterm": "w0t2p0:CODEX"}}
 
 
 def test_scan_claude_attaches_terminal(tmp_path):

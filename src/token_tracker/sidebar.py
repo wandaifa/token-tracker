@@ -89,7 +89,7 @@ class LiveSession:
     prompts: list[Prompt] = field(default_factory=list)  # 时间正序，最后一条最新
     model: str = ""
     branch: str = ""  # git 分支（CC=transcript 自带 gitBranch；codex=session_meta.git.branch）
-    terminal: dict = field(default_factory=dict)  # 终端定位 {"iterm": ..., "tmux": ...}（statusline 采集），空=不可跳转
+    terminal: dict = field(default_factory=dict)  # 终端定位 {"iterm": ...}（statusline 采集），空=不可跳转
     next_hint: str = ""  # 「下一步」提示：结构化待回答问题或末段规则提取结果，无则空
 
 

@@ -100,13 +100,11 @@ def _record_terminal_map(session_id):
     """记录当前 Codex 会话所在窗格，供普通 `tt sidebar` 点击项目名跳转。
 
     单独落文件，不和 CC statusline 的心跳/status JSON 竞争写；同一文件的多个 Codex Stop
-    hook 用 flock 串行合并（Windows 无 iTerm/tmux，缺 fcntl 时仍保留原子替换兜底）。
+    hook 用 flock 串行合并（Windows 无 iTerm2，缺 fcntl 时仍保留原子替换兜底）。
     """
     term = {}
     if os.environ.get("ITERM_SESSION_ID"):
         term["iterm"] = os.environ["ITERM_SESSION_ID"]
-    if os.environ.get("TMUX_PANE"):
-        term["tmux"] = os.environ["TMUX_PANE"]
     if not session_id or not term:
         return
 
@@ -273,7 +271,7 @@ def main():
             snapshot, exact_session = _current_session(payload)
             terminal_session_id = snapshot.session_id if snapshot and exact_session else ""
         _record_terminal_map(terminal_session_id)
-        if not os.environ.get("ITERM_SESSION_ID") or os.environ.get("TMUX_PANE"):
+        if not os.environ.get("ITERM_SESSION_ID"):
             return
 
     snapshot, exact_session = _current_session(payload)

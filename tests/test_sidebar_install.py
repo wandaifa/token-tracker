@@ -13,7 +13,7 @@ def test_skill_render_uses_installed_python(monkeypatch):
     assert '"/opt/tt env/bin/python" -B -m token_tracker.sidebar_command split' in rendered
     assert sidebar_install._SKILL_MARKER in rendered
     assert "ITERM_SESSION_ID" in rendered
-    assert "TMUX_PANE" in rendered
+    assert "TMUX_PANE" not in rendered
     assert "sandbox_permissions" in rendered
     assert "require_escalated" in rendered
     assert "justification" in rendered

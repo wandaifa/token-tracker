@@ -1,6 +1,6 @@
 # Token Tracker (tt)
 
-本分支 `0.7.1` 基于已安装的 `0.7.0`，同步官方 `0.5.9` 的模型报价、阶梯／时段计费及模型名称；保留 iTerm2 彩色摘要与 tmux 固定底栏，不包含独立 `0.8.0` 的 Profile 自动创建改动。
+本分支 `0.9.0` 保留 iTerm2 彩色摘要、原生分屏和官方 `0.5.9` 计费更新；不包含独立 `0.8.0` 的 Profile 自动创建改动。
 
 本地 AI Agent Token 消耗追踪/分析工具，支持 **Claude Code**、**Codex** 和 **Kimi Code**。
 
@@ -15,8 +15,8 @@
 ## 功能亮点
 
 - **多 Agent 统一追踪** — Claude Code + Codex + Kimi Code 统一读取，多 Agent 按来源分组
-- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex 原生单行底栏或 tmux 同窗格底部两行状态；Kimi Code 用官方 `status_line` 接口
-- **实时侧边栏** — `tt sidebar` 窄窗格常驻面板：全部活跃会话一屏总览（状态灯 + 最近提示词 + 「下一步」建议），点击会话直达对应 iTerm2 / tmux 窗格
+- **状态栏集成** — Claude Code 用官方 StatusLine 接口；Codex 原生单行底栏与 iTerm2 彩色摘要；Kimi Code 用官方 `status_line` 接口
+- **实时侧边栏** — `tt sidebar` 窄窗格常驻面板：全部活跃会话一屏总览（状态灯 + 最近提示词 + 「下一步」建议），点击会话直达对应 iTerm2 窗格
 - **当前会话自动分屏** — Codex 中显式执行 `$tt-sidebar`，在原会话右侧自动打开 1/3 宽度的独立提示词侧边栏
 - **限额监控** — 实时 5h / 7d 配额百分比 + 重置倒计时
 - **多维成本分析** — 会话 / 日 / 周 / 月多维报表，等效成本统计
@@ -62,15 +62,13 @@
 
 ### Codex（原生底栏／iTerm2 Hook 彩色摘要）
 
-Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的固定状态栏。本分支在 iTerm2 且非 tmux 的会话里，Stop Hook 在每轮回答后输出两行无 ANSI 的摘要；选用已有的「Token Tracker Colors Trial」iTerm2 动态 Profile 后，由 11 条 HighlightTrigger 为摘要上色。`tt setup` 和 `tt theme set` 会同步这个已存在 Profile 的颜色；未选中该 Profile 时文字仍可读但没有这些颜色。tmux 或其它终端的 Hook 仍保持静默，只记录 sidebar 跳转所需的映射。当前会话底栏仍可用 Codex 原生 `/statusline`，它只有一行，窗格较窄时尾部字段可能省略。
+Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的固定状态栏。本分支在 iTerm2 会话里，Stop Hook 在每轮回答后输出两行无 ANSI 的摘要；选用已有的「Token Tracker Colors Trial」iTerm2 动态 Profile 后，由 11 条 HighlightTrigger 为摘要上色。`tt setup` 和 `tt theme set` 会同步这个已存在 Profile 的颜色；未选中该 Profile 时文字仍可读但没有这些颜色。其它终端的 Hook 仍保持静默，只记录 sidebar 跳转所需的映射。当前会话底栏仍可用 Codex 原生 `/statusline`，它只有一行，窗格较窄时尾部字段可能省略。
 
 原生 `used-tokens` 使用 Codex 自己的口径：输入扣除缓存读取后再加输出；Token Tracker 的 `Total` 包含缓存读取，因此同一会话的两个数字可能不同。[Codex 0.156.1 源码](https://github.com/openai/codex/blob/rust-v0.156.1/codex-rs/tui/src/token_usage.rs)
 
-如果需要在当前终端窗格底部常驻完整两行状态，可先进入 tmux，再运行 `tt statusbar tmux`，随后在同一个 tmux 会话中启动或恢复 Codex。Codex 首次回答后，Stop Hook 会把会话绑定到当前 tmux 窗格；状态栏按活动窗格显示对应会话。该配置只作用于当前 tmux 会话，不改个人 tmux 配置文件。退出 tmux 后，下次新建 tmux 会话需再次运行此命令。当前已在 tmux 外运行的 Codex 会话无法直接迁入，需在 tmux 内恢复。
-
 已有 iTerm2 分屏方案仍可手动运行 `tt statusbar split`；`tt statusbar watch <session-id> --once` 可检查指定会话的单次渲染。
 
-tmux 状态栏每 10 秒刷新一次；两行内容左侧留两个字符，底部留一个空白终端行。独立 iTerm2 底部窗格每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次，退出可用 Ctrl-C。
+独立 iTerm2 底部窗格每 5 秒检查当前会话文件的变化，额度倒计时至多 30 秒刷新一次，退出可用 Ctrl-C。
 
 **两行布局**：
 
@@ -109,14 +107,14 @@ tmux 状态栏每 10 秒刷新一次；两行内容左侧留两个字符，底�
 
 ## 实时侧边栏（`tt sidebar`）
 
-在终端分屏 / tmux 窄窗格里常驻，一屏总览本机所有 AI 会话：
+在终端窄窗格里常驻，一屏总览本机所有 AI 会话：
 
 - **活跃会话列表** — 过去 5h 内有动静的会话（Claude Code + Codex + Kimi Code），按最近活动排序取前 10；头行显示状态灯、`项目名(分支)`、agent、模型与距上次活动时间
 - **三地时钟** — 北京、洛杉矶、伦敦合并为一行，只显示城市与 `HH:MM`
 - **提示词历史** — 运行中、待确认、等输入会话保留最近 5 条，历史最多 1 行、最新最多 2 行；空闲会话只显示最新 1 条，不显示「下一步」
 - **状态灯** — 运行中（星形动画）/ 需要关注（工具调用无结果，大概率在等授权）/ 等输入 / 空闲
 - **「下一步」建议** — 从 AI 最后一条回复的收尾段提取征询 / 待办（纯规则，不走模型）；AI 正在用 AskUserQuestion 提问时直接显示问题与选项
-- **点击跳转** — 点会话头行直接切换到它所在的 iTerm2 / tmux 窗格（需启用对应 Agent 的状态栏组件提供映射；Codex 在下一次回答完成后建立映射；iTerm2 首次点击会弹 macOS 自动化授权，属预期）
+- **点击跳转** — 点会话头行直接切换到它所在的 iTerm2 窗格（需启用对应 Agent 的状态栏组件提供映射；Codex 在下一次回答完成后建立映射；iTerm2 首次点击会弹 macOS 自动化授权，属预期）
 
 操作：鼠标拖拽选择文字，松开后自动复制；滚轮 / 方向键 / PgUp/PgDn 滚动，`q` / `Esc` / `Ctrl+C` 退出；`tt sidebar --once` 打印一帧快照即退。数据每 5s 刷新，只读本地会话记录、不写任何产物；加 `--claude` / `--codex` 可只看单个 agent。
 
@@ -130,7 +128,7 @@ tmux 状态栏每 10 秒刷新一次；两行内容左侧留两个字符，底�
 $tt-sidebar
 ```
 
-- 支持 iTerm2、Ghostty（≥ 1.3.0，macOS）与 tmux；iTerm2 无需启用 Python API。首次使用会先出现 Codex 的沙箱外执行确认，随后 macOS 可能再请求「自动化」授权，请允许 Token Tracker 控制 iTerm2 / Ghostty；两次确认均属预期，后续可复用授权。原会话窗格保持焦点。iTerm2 原生全屏会拒绝 AppleScript 调整列宽，需先退出全屏再执行。
+- 支持 iTerm2、Ghostty（≥ 1.3.0，macOS）；iTerm2 无需启用 Python API。首次使用会先出现 Codex 的沙箱外执行确认，随后 macOS 可能再请求「自动化」授权，请允许 Token Tracker 控制 iTerm2 / Ghostty；两次确认均属预期，后续可复用授权。原会话窗格保持焦点。iTerm2 原生全屏会拒绝 AppleScript 调整列宽，需先退出全屏再执行。
 - `tt setup` 把 Codex 的伪 statusline `Stop` 与 sidebar `UserPromptSubmit` 统一安装到用户级 `hooks.json`；后者用本地 FIFO 把新提示词推给已打开的分屏，无 sidebar 时立即返回，不轮询 transcript、不上传或持久化提示词。
 - Codex 会要求审查非托管 Hook：安装后运行 `/hooks`，信任 Token Tracker 对应项。Skill 未立即出现时重启 Codex。
 - `tt unsetup` 会一并移除 Token Tracker 管理的 Skill 与 Hook；若 `~/.agents/skills/tt-sidebar` 已是用户自己的同名 Skill，安装与卸载都不会覆盖它。
@@ -145,7 +143,7 @@ $tt-sidebar
 /skill:tt-sidebar
 ```
 
-- 支持 iTerm2、Ghostty（≥ 1.3.0，macOS）与 tmux；iTerm2 / Ghostty 的 macOS「自动化」授权提示属预期。Kimi 会话内没有会话 ID 环境变量，启动器按「`cwd`（兼容旧版 `workDir`）等于当前目录、`updatedAt` 最新」定位当前会话。
+- 支持 iTerm2、Ghostty（≥ 1.3.0，macOS）；iTerm2 / Ghostty 的 macOS「自动化」授权提示属预期。Kimi 会话内没有会话 ID 环境变量，启动器按「`cwd`（兼容旧版 `workDir`）等于当前目录、`updatedAt` 最新」定位当前会话。
 - hook 同样走本地 FIFO 推送，无 sidebar 时立即返回；新会话生效，`tt unsetup` 一并移除。
 
 ## 安装

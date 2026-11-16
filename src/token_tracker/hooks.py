@@ -48,9 +48,9 @@ KIMI_STATUSLINE_STATE_PATH = os.path.join(_TT, "tt-kimi-statusline.json")
 KIMI_STATUSLINE_QUOTA_PATH = os.path.join(_TT, "tt-kimi-quota.json")
 STATUS_FILE = config.STATUS_FILE                          # CC statusline 缓存（单一权威定义在 config）
 TERMINAL_MAP_FILE = config.TERMINAL_MAP_FILE              # Codex Stop hook 采集的终端定位映射
-HOOK_VERSION = "2.1"  # 2.0: 采集 _terminal_map（sidebar 点击跳转）；2.1: 共享状态无条件随帧携带、防异常帧清表
-STATUSLINE_HOOK_VERSION = "2.2"  # 2.2: iTerm2 非 tmux Hook 输出纯文本摘要，保留 --direct 彩色输出
-KIMI_STATUSLINE_HOOK_VERSION = "1.2"  # 1.2: Model 段加实际 effort（wire thinkingEffort），新增 Out t/s（output÷请求时长）
+HOOK_VERSION = "2.2"  # 2.2: 终端映射仅采集 iTerm2；共享状态仍随帧携带
+STATUSLINE_HOOK_VERSION = "2.3"  # 2.3: 仅使用 iTerm2 终端映射，保留纯文本摘要与 --direct 彩色输出
+KIMI_STATUSLINE_HOOK_VERSION = "1.3"  # 1.3: 终端映射仅采集 iTerm2，保留现有 effort 与 TPS 计算
 
 CC_BACKUP_PATH = os.path.join(_TT, "cc-backup.json")
 CODEX_BACKUP_LEGACY = os.path.join(_TT, "codex-backup.json")  # 老用户残留，unsetup 时还能恢复

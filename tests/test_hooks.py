@@ -105,7 +105,7 @@ def test_rendered_hook_script_has_single_version_source():
 
 
 def test_statusline_records_terminal_map(tmp_path):
-    # HOOK_VERSION 2.0：statusline 按 session_id 采集 ITERM_SESSION_ID/TMUX_PANE 进
+    # HOOK_VERSION 2.0：statusline 按 session_id 采集 ITERM_SESSION_ID 进
     # _terminal_map（sidebar 点击跳转的映射源），多会话合并不互相清零。
     # HOME 重定向到 tmp，脚本的 STATUS_FILE(~/.config/...) 随之落在临时目录、不碰真实文件。
     script = tmp_path / "tt-statusline.py"
@@ -126,8 +126,8 @@ def test_statusline_records_terminal_map(tmp_path):
     _run("sess-b")
     status_path = tmp_path / ".config" / "token-tracker" / "tt-status.json"
     tmap = json.loads(status_path.read_text())["_terminal_map"]
-    assert tmap["sess-a"] == {"iterm": "w0t1p0:AAA-111", "tmux": "%7"}  # 第二帧未清掉第一帧
-    assert tmap["sess-b"] == {"iterm": "w0t2p0:BBB-222", "tmux": "%7"}
+    assert tmap["sess-a"] == {"iterm": "w0t1p0:AAA-111"}  # 第二帧未清掉第一帧
+    assert tmap["sess-b"] == {"iterm": "w0t2p0:BBB-222"}
     # 回归（2.1）：无 session_id 的异常帧不得清掉共享状态（曾被这类帧反复清表）
     _run("")
     tmap = json.loads(status_path.read_text())["_terminal_map"]
@@ -242,7 +242,8 @@ def test_codex_statusline_hook_iterm_plain_and_terminal_direct_colored(tmp_path)
 
     tmux = subprocess.run([sys.executable, str(script)], input=payload, text=True,
                           capture_output=True, check=True, env={**env, "TMUX_PANE": "%7"})
-    assert tmux.stdout == "" and tmux.stderr == ""
+    assert json.loads(tmux.stdout)["systemMessage"] == status
+    assert tmux.stderr == ""
     no_iterm = subprocess.run([sys.executable, str(script)], input=payload, text=True,
                                capture_output=True, check=True,
                                env={k: v for k, v in env.items() if k != "ITERM_SESSION_ID"})
@@ -308,8 +309,8 @@ def test_codex_statusline_records_terminal_map_without_touching_cc_status(tmp_pa
     _run("")  # 无精确 ID 时最近文件只供显示，不得把当前窗格错绑给 fallback 会话，也不得清表
 
     term_map = json.loads((cfg / "tt-terminal-map.json").read_text())["_terminal_map"]
-    assert term_map["codex-a"] == {"iterm": "w0t1p0:AAA-111", "tmux": "%7"}
-    assert term_map["codex-b"] == {"iterm": "w0t2p0:BBB-222", "tmux": "%7"}
+    assert term_map["codex-a"] == {"iterm": "w0t1p0:AAA-111"}
+    assert term_map["codex-b"] == {"iterm": "w0t2p0:BBB-222"}
     assert "wrong-fallback" not in term_map
     assert json.loads(status_path.read_text()) == {
         "session_id": "claude-live", "rate_limits": {"five_hour": 12},
@@ -1367,7 +1368,7 @@ def test_kimi_statusline_script_renders_one_line_and_accumulates(tmp_path):
 
     cfg = home / ".config" / "token-tracker"
     term_map = json.loads((cfg / "tt-terminal-map.json").read_text())["_terminal_map"]
-    assert term_map["session_abc123"] == {"iterm": "w0t1p0:AAA-111", "tmux": "%7"}
+    assert term_map["session_abc123"] == {"iterm": "w0t1p0:AAA-111"}
     assert not (cfg / "tt-status.json").exists()      # 不碰 CC 心跳/status 缓存
 
     # 第二帧：wire 追加一条 usage.record → 按 offset 增量累计（不全量重扫、不重复计数）
