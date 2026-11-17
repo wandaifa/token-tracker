@@ -88,7 +88,9 @@ Built on `agy`'s `settings.json` `statusLine` API (`stack_with_default: true` by
 - **L2** `5h <bar> <used%> (<reset>) | 7d <bar> <used%> (<reset>) | Ctx <bar> <%> (<used>/<window>)` — `5h / 7d` are updated in the background every 2 minutes via `agy -p "/usage" --output-format json` (zero LLM tokens) and follow the active model's quota group
 - **L3** `<title…> | SID: <full Session ID>` — falls back to local conversation metadata/database when `stdin` omits `conversation_title`
 
-> Existing custom `statusLine` configurations are backed up (`~/.config/token-tracker/agy-backup.json`) and never hijacked by default; `tt unsetup` restores the prior configuration cleanly.
+> - **Enable & apply**: Run `tt setup` (works even on machines with only `agy` installed); in an active `agy` session, run `/statusline` or restart the session to see it right away.
+> - **Warm quota cache (optional)**: Background refresh runs automatically every 2 minutes, or run `python3 ~/.config/token-tracker/agy-statusline.py --refresh-quota` once manually.
+> - **Safety & uninstall**: Existing custom `statusLine` settings are kept by default; prior configs are backed up to `~/.config/token-tracker/agy-backup.json` and restored by `tt unsetup` (supports `AGY_HOME` override for `~/.gemini/antigravity-cli`).
 
 ## Live Sidebar
 
@@ -118,14 +120,41 @@ For Kimi Code, `tt setup` installs the Skill to `~/.kimi-code/skills/tt-sidebar`
 
 ## Install
 
+### Install from this personal fork / Sync to another machine (includes `agy` statusline & Codex colored summary)
+
+```bash
+# Option 1: uv (recommended)
+uv tool install --from git+https://github.com/wandaifa/token-tracker.git token-tracker
+
+# Or pipx:
+# pipx install git+https://github.com/wandaifa/token-tracker.git
+
+# Run setup once (detects Claude Code / Codex / Kimi Code / Antigravity CLI)
+tt setup
+```
+
+Or install in editable mode from a local clone:
+
+```bash
+git clone https://github.com/wandaifa/token-tracker.git
+cd token-tracker
+python3 -m venv .venv && .venv/bin/pip install -e .
+.venv/bin/tt setup
+```
+
+> **Upgrade**: `uv tool install --reinstall --from git+https://github.com/wandaifa/token-tracker.git token-tracker` (or `git pull` in your clone), then run `tt setup` once when a release adds a new agent integration.
+> **Uninstall**: `tt unsetup`
+
+<details>
+<summary>Upstream one-liner (without this fork's customizations)</summary>
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/stormzhang/token-tracker/main/install.sh | bash
 ```
 
 The script auto-picks the best install method (uv / pipx / private venv), sidesteps PEP 668, and never pollutes system Python.
 
-> **Upgrade**: re-run the command above (the script is idempotent and pulls the latest), then run `tt setup` once when a release adds a new agent integration such as `$tt-sidebar`.
-> **Uninstall**: `tt unsetup`
+</details>
 
 **Still on the old version after upgrading?** An old copy installed in another Python environment is likely shadowing the new one (common on Windows, or if you installed via `pip install` early on). Uninstall the old copy, then re-run the curl install once:
 
@@ -156,7 +185,7 @@ tt --version      # show version (-v / -V)
 
 ## Color Themes
 
-6 built-in themes, **shared** across CLI reports and every agent's status line (CC / Codex / Kimi Code) — switching changes them all:
+6 built-in themes, **shared** across CLI reports and every agent's status line (CC / Codex / Kimi Code / Antigravity CLI) — switching changes them all:
 
 ![Supported themes](assets/screenshot-themes.png)
 
@@ -188,6 +217,7 @@ The first time you run `tt` (or run `tt setup` in a standalone terminal), an **i
 3. **Take over Claude Code status line** — Yes/No (only when Claude Code is detected; an existing custom statusLine is backed up first, and picking No leaves it untouched)
 4. **Enable Codex faux statusline** — Yes/No (only when Codex is detected)
 5. **Enable Kimi Code status line** — Yes/No (only when Kimi Code is detected; an existing custom `status_line.command` is never overwritten by default)
+6. **Take over Antigravity CLI (`agy`) status line** — Yes/No (only when `~/.gemini/antigravity-cli` is detected; an existing custom `statusLine` is never overwritten by default)
 
 CI / non-tty environments (Docker / scripts / `curl|bash`) auto-install with **recommended defaults**: language follows the system setting, theme mocha, components on by default but **an existing custom statusLine is never replaced**. To change anything later, just run `tt setup` again.
 
@@ -209,8 +239,9 @@ Available sort fields: `tokens` / `cost` / `messages` / `time` / `input` / `outp
 | Claude Code | `~/.claude/projects/*/` | JSONL (per-message usage) |
 | Codex | `~/.codex/sessions/` | JSONL + SQLite |
 | Kimi Code | `~/.kimi-code/sessions/` | wire JSONL (per-turn increments) |
+| Antigravity CLI (`agy`) | `~/.gemini/antigravity-cli/` | statusLine only (reads session transcripts, title metadata, and `/usage` cache; excluded from reports) |
 
-Cross-platform paths: on Windows `~` resolves to `%USERPROFILE%`. Honors `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `KIMI_CODE_HOME` (the official custom-directory env vars) when set.
+Cross-platform paths: on Windows `~` resolves to `%USERPROFILE%`. Honors `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `KIMI_CODE_HOME` / `AGY_HOME` when set.
 
 Token Tracker is **read-only** — it never modifies any agent data.
 

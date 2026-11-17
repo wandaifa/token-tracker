@@ -95,7 +95,9 @@ Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的�
 - **L2** `5h <进度条> <已用%> (<重置>) | 7d <进度条> <已用%> (<重置>) | Ctx <进度条> <%> (<已用>/<窗口>)` —— `5h / 7d` 由后台每 2 分钟静默执行 `agy -p "/usage" --output-format json`（零 LLM 消耗）更新缓存，并自动跟随当前模型所属配额组（Gemini / Claude & GPT / Argon）
 - **L3** `<会话标题…> | SID: <完整 Session ID>` —— 会话标题优先取 `stdin`，缺失时回退读取本地元数据与对话日志
 
-> 状态栏接管同样遵循不覆盖已有自定义 `statusLine` 原则，备份保存在 `~/.config/token-tracker/agy-backup.json`，`tt unsetup` 自动还原并清理缓存。
+> - **启用与生效**：运行 `tt setup`（即使新电脑只装了 `agy` 未装其他 Agent 也可单独引导）；已有会话可执行 `/statusline` 立即刷新，或重开会话生效。
+> - **首次预热配额（可选）**：首次运行后会在后台自动拉取 `/usage` 缓存，也可手动执行 `python3 ~/.config/token-tracker/agy-statusline.py --refresh-quota` 立即写入。
+> - **安全保护与卸载**：已有自定义 `statusLine` 默认跳过；接管前原配置备份在 `~/.config/token-tracker/agy-backup.json`，`tt unsetup` 自动还原并清理缓存（支持 `AGY_HOME` 覆盖默认 `~/.gemini/antigravity-cli`）。
 
 ## 报表速览
 
@@ -158,14 +160,41 @@ $tt-sidebar
 
 ## 安装
 
+### 从本个人 fork 安装 / 另一台电脑接入（含 `agy` 状态栏与 Codex 彩色摘要）
+
+```bash
+# 方式 1：使用 uv（推荐）
+uv tool install --from git+https://github.com/wandaifa/token-tracker.git token-tracker
+
+# 或使用 pipx：
+# pipx install git+https://github.com/wandaifa/token-tracker.git
+
+# 安装后执行一次引导配置（会检测 Claude Code / Codex / Kimi Code / Antigravity CLI）
+tt setup
+```
+
+或拉取源码以可编辑模式安装：
+
+```bash
+git clone https://github.com/wandaifa/token-tracker.git
+cd token-tracker
+python3 -m venv .venv && .venv/bin/pip install -e .
+.venv/bin/tt setup
+```
+
+> **跨机升级**：`uv tool install --reinstall --from git+https://github.com/wandaifa/token-tracker.git token-tracker`（或源码目录 `git pull`）；若新版本新增了 Agent 状态栏集成，升级后再跑一次 `tt setup` 即可。
+> **卸载**：`tt unsetup`
+
+<details>
+<summary>上游原版一键安装脚本（不含本 fork 定制功能）</summary>
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/stormzhang/token-tracker/main/install.sh | bash
 ```
 
 脚本自动选最优安装方式（uv / pipx / 私有 venv），绕开 PEP 668、不污染系统 Python。
 
-> **升级**：重跑上面的命令即可（脚本幂等、自动升到最新）。包含新 Agent 集成的版本升级后，再运行一次 `tt setup`；例如 `$tt-sidebar` 需要由 setup 安装到 Codex 用户级 Skill 目录。
-> **卸载**：`tt unsetup`
+</details>
 
 **升级后 `tt --version` 还是旧版？** 多半是旧版装在别的 Python 环境里遮蔽了新版（常见于 Windows、或早期用 `pip install` 装过）。卸载旧版后重装一次即可：
 
@@ -196,7 +225,7 @@ tt --version      # 查看版本（-v / -V 同义）
 
 ## 配色主题
 
-内置 6 套主题，CLI 报表与各 Agent 状态栏（CC / Codex / Kimi Code）**统一同源**（切主题一起变）：
+内置 6 套主题，CLI 报表与各 Agent 状态栏（CC / Codex / Kimi Code / Antigravity CLI）**统一同源**（切主题一起变）：
 
 ![支持的主题](assets/screenshot-themes.png)
 
@@ -228,6 +257,7 @@ tt monthly --theme nord  # 任意报表临时换主题渲染（不持久化、�
 3. **接管 Claude Code 状态栏** — Yes/No（仅检测到 Claude Code 时；已有自定义 statusLine 会先备份、选 No 完全不碰）
 4. **启用 Codex 伪 statusline** — Yes/No（仅检测到 Codex 时）
 5. **启用 Kimi Code 状态栏** — Yes/No（仅检测到 Kimi Code 时；已有自定义 `status_line.command` 默认不覆盖）
+6. **接管 Antigravity CLI (`agy`) 状态栏** — Yes/No（仅检测到 `~/.gemini/antigravity-cli` 时；已有自定义 `statusLine` 默认不覆盖）
 
 CI / 非 tty 环境（Docker / 脚本 / `curl|bash`）自动按**推荐默认**配置：语言跟随系统设置、主题 mocha、组件默认开启但**不替换已有自定义 statusLine**。装好后想改任何一项，再跑一次 `tt setup` 即可。
 
@@ -249,8 +279,9 @@ tt sessions --sort tokens --asc # 按 token 升序
 | Claude Code | `~/.claude/projects/*/` | JSONL（逐消息用量） |
 | Codex | `~/.codex/sessions/` | JSONL + SQLite |
 | Kimi Code | `~/.kimi-code/sessions/` | wire JSONL（每 turn 增量） |
+| Antigravity CLI (`agy`) | `~/.gemini/antigravity-cli/` | 仅用于状态栏读取会话日志、标题元数据与 `/usage` 缓存（不进报表） |
 
-路径跨平台：Windows 下 `~` 解析到 `%USERPROFILE%`。设了 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `KIMI_CODE_HOME` 环境变量（官方支持的自定义目录）时自动跟随。
+路径跨平台：Windows 下 `~` 解析到 `%USERPROFILE%`。设了 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `KIMI_CODE_HOME` / `AGY_HOME` 环境变量时自动跟随。
 
 Token Tracker 对 Agent 数据**只读**，不做任何修改。
 
