@@ -33,6 +33,14 @@ def kimi_home() -> str:
     return os.path.expanduser("~/.kimi-code")
 
 
+def agy_home() -> str:
+    """Antigravity CLI 配置/数据根目录：`AGY_HOME` 优先，否则 `~/.gemini/antigravity-cli`。"""
+    env = os.environ.get("AGY_HOME", "").strip()
+    if env:
+        return env
+    return os.path.expanduser("~/.gemini/antigravity-cli")
+
+
 def iter_jsonl_dicts(path: Path | str) -> Iterator[dict]:
     """逐行读取 JSONL，只 yield dict 行。
 

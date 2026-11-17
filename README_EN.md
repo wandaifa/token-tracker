@@ -25,7 +25,7 @@ Custom StatusLine integration + CLI Dashboard — see token usage, cost, and rat
 
 ## StatusLine
 
-`tt setup` auto-configures status lines for Claude Code, Codex, and Kimi Code, auto-upgraded when the script updates.
+`tt setup` auto-configures status lines for Claude Code, Codex, Kimi Code, and Antigravity CLI (`agy`), auto-upgraded when the script updates.
 
 ### Claude Code (official API)
 
@@ -79,6 +79,16 @@ Built on Kimi Code's official `status_line` API (`tui.toml`) — a single trueco
 - Project / branch / model / permission mode come from Kimi's official snapshot (the snapshot has no thinking-effort field — effort is read from the actual `thinkingEffort` of requests in the session wire); the branch segment's uncommitted +/− line counts and untracked files are computed via `git diff --numstat` + `git ls-files` (same as the CC status line); Total and Cost are accumulated **incrementally** from the session's `wire.jsonl` by the status-line script (offset-cached, only new bytes are read per run), priced with the built-in official Kimi rates
 - Fully supported on macOS / Linux / Windows (Windows console GBK encoding and background-process detaching are both handled)
 - An existing custom `status_line.command` is never overwritten by default (the wizard also lets you opt out); `tt unsetup` restores the exact prior state
+
+### Antigravity CLI / agy (official `statusLine` API)
+
+Built on `agy`'s `settings.json` `statusLine` API (`stack_with_default: true` by default, stacked under the built-in status bar), rendering three theme-colored lines:
+
+- **L1** `[project](branch* +A -D ?U) | Model: <model> | Total: <tokens> (<cache>% cache) | <turns>t · <duration>`
+- **L2** `5h <bar> <used%> (<reset>) | 7d <bar> <used%> (<reset>) | Ctx <bar> <%> (<used>/<window>)` — `5h / 7d` are updated in the background every 2 minutes via `agy -p "/usage" --output-format json` (zero LLM tokens) and follow the active model's quota group
+- **L3** `<title…> | SID: <full Session ID>` — falls back to local conversation metadata/database when `stdin` omits `conversation_title`
+
+> Existing custom `statusLine` configurations are backed up (`~/.config/token-tracker/agy-backup.json`) and never hijacked by default; `tt unsetup` restores the prior configuration cleanly.
 
 ## Live Sidebar
 

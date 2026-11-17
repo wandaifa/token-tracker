@@ -18,7 +18,7 @@ from .analyzer.aggregator import (
     aggregate_weekly,
 )
 from .analyzer.cost import calculate_cost
-from .hooks import is_setup, needs_update, setup, unsetup, update_hook
+from .hooks import has_setup_target, is_setup, needs_update, setup, unsetup, update_hook
 from .i18n import t
 from .sidebar import registry_update_hint, scan_sessions
 from .tz import system_tz
@@ -338,10 +338,10 @@ def _should_run_wizard() -> bool:
 
 
 def _run_setup_flow() -> None:
-    """配置流程**单一入口**：先确认装了至少一个 agent（detect_agents 守卫只此一处），
+    """配置流程**单一入口**：先确认装了至少一个 agent（含仅状态栏托管的 Antigravity CLI），
     再按环境分流——双 tty 非会话内进交互向导，否则非交互默认全装。
     `tt setup` 与首次运行「没配过」时都走这里。"""
-    if not detect_agents():
+    if not detect_agents() and not has_setup_target():
         get_console().print(f"[red]{t('no_agent_install')}[/red]")
         return
     if _should_run_wizard():

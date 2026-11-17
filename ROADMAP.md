@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-`0.9.0` 已按用户确认完整移除项目 tmux 支持并更新现有私有安装。固定底栏命令、分屏、点击跳转和三 Agent 映射逻辑及 Skill 指引已清理；iTerm2 彩色摘要／原生分屏、Ghostty 原生分屏和官方计费更新保留。源码与 wheel 各 565 项测试通过，实际安装命令拒绝旧入口、真实会话渲染通过；9 份注册／主题／终端／shell 配置保持。原 `0.8.0` 候选仅保留在历史分支，未启用。
+`0.10.0` 已将 Antigravity CLI（`agy`）三行主题彩色状态栏正式接入 `tt setup` / `tt unsetup` / `update_hook` / `wizard`，不改动现有 `tt daily` / `sessions` 报表口径。支持后台静默缓存刷新 `agy -p "/usage" --output-format json` 按当前所选模型分组展示 `5h / 7d` 已用进度，并在第 3 行展示会话标题（含本地元数据/DB 回退）与完整 Session ID；不覆盖已有自定义 `statusLine`，`tt unsetup` 自动还原并清理缓存。原 `0.8.0` 候选仅保留在历史分支，未启用。
 
 ## 上游进度存档
 
@@ -87,6 +87,7 @@
 
 ## 已完成
 
+- 2026-11-17：`0.10.0` 接入 Antigravity CLI（`agy`）三行状态栏托管：`templates/agy_statusline.py`、`adapters/util.agy_home`、`config.save_agy_statusline` / `agy_statusline_intent`、`hooks.py`（`AGY_STATUSLINE_HOOK_VERSION = "1.0"`）与 `wizard` / `cli` / `i18n` 已落地，包含后台 `agy -p "/usage" --output-format json` 配额缓存（按当前模型自动切换 `Gemini Models` / `Claude and GPT models` / `Gemini 4 Argon`）、本地标题兜底、自定义配置保护与 `tt unsetup` 还原；不改动报表数据源。
 - 2026-11-16：`0.9.0` 移除项目 tmux 支持并完成本机更新：固定底栏子命令、sidebar 分屏／跳转、三 Agent 映射和托管 Skill 指引均清理；包内 46 文件无 tmux 引用，与安装逐字节一致。两个旧命令实际返回 argparse 退出码 2，旧环境变量不再触发分屏；当前真实会话两行／47 ANSI 标记保持，3 个托管文件已定向更新，9 份配置未改变。旧安装与产物 59 文件已备份核验。
 - 2026-11-16：按用户本轮「可以」确认以本地 wheel、`--no-deps --no-index` 更新既有私有 venv 至 `0.7.1`；CLI 与元数据版本一致、46 个运行文件与验收包逐字节一致，实际安装代码的 236 项计费测试通过，现有 Hook 在当前真实会话输出两行、47 个 ANSI 标记；8 份配置指纹一致，未执行 setup／新增依赖。
 - 2026-11-16：`0.7.1` 计费同步候选：官方 `0.5.9` 的模型报价、阶梯／峰谷与节假日计费及模型名称已合入；源代码与实际 wheel 各 567 项测试通过，Ruff／mypy 通过；当前真实 Codex 会话两行渲染与已装 `0.7.0` 逐字一致。此项仅指候选验收，用户级安装未执行。
@@ -185,6 +186,7 @@
 
 ## 最近验证
 
+- 2026-11-17：`0.10.0` 验证：沙箱内 `pytest`（剔除依赖本地端口与 `ps` 的 2 项）569 passed，沙箱外复跑该 2 项 passed（全套 571 项通过）；`ruff check .`、`mypy src/token_tracker`（44 个源文件）及 `git diff --check` 通过；新增 6 项测试覆盖 `agy` 模板渲染、三行输出与标题兜底、`--refresh-quota`、自定义 `statusLine` 保护、安装/更新/卸载/opt-out 闭环及纯 `agy` 环境 `tt setup`。
 - 2026-11-16：最终独立复验：原项目工作区已切至 `refactor/remove-tmux`（源码提交 `061d3fa`，旧 `0.8.0` 候选分支保留）；开发 venv 的旧 `0.7.0` 可编辑元数据已刷新，开发／用户 CLI 均为 `0.9.0`。活动源码、打包元数据和两份 README 中 tmux 匹配数为 0，9 份配置指纹保持；未发现 tmux 或 Token Tracker 常驻进程，无需关闭现有会话。
 - 2026-11-16：先以 3 个回归复现旧命令／跳转／Skill 仍支持 tmux，再移除对应代码。相关 193 项通过、完整源码及实际 wheel 各 565 passed，Ruff／mypy（43 文件）及 diff 检查通过。wheel 171630 字节、SHA256 `dee8e2c208600499131439c6f93596d5614022544f806b8b33c1973227472620`，46 文件与源／安装一致；真实渲染与旧版逐字一致，实际安装 `tt --version` 为 0.9.0。已更新 Claude 2.2／Codex 2.3 两脚本及托管 Skill，不执行 setup／update_hook。`needs_update()` 的旧 Hook 排序检查仍为 true：两条 CLI Agents handler 在 tt 后，现有同步器会将 tt 移至末尾；该代码及 hooks.json 与 0.7.1 相同，未在本轮调整。未关闭会话、未新启常驻进程、未新增依赖或推送／发布。
 - 2026-11-16：安装前复验 wheel SHA256 和旧安装 56 文件备份均一致，执行本地无依赖安装成功（`0.7.0→0.7.1`）。独立 CLI `tt --version` 为 0.7.1；46 文件与 wheel 相同、安装代码计费 236 passed、真实现有脚本两行／47 ANSI，8 份配置指纹保持。未执行 setup、未启动常驻进程、未推送或公开发布；旧版备份保留在临时目录，用户级安装确认已消费，不重放。

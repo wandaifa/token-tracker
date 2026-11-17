@@ -48,6 +48,10 @@ def _isolate_real_home(tmp_path, monkeypatch):
     monkeypatch.setattr(hooks, "TERMINAL_MAP_FILE", str(tt / "tt-terminal-map.json"))
     monkeypatch.setattr(hooks, "CC_BACKUP_PATH", str(tt / "cc-backup.json"))
     monkeypatch.setattr(hooks, "CODEX_BACKUP_LEGACY", str(tt / "codex-backup.json"))
+    monkeypatch.setattr(hooks, "_AGY", str(home / ".gemini" / "antigravity-cli"))
+    monkeypatch.setattr(hooks, "AGY_SETTINGS", str(home / ".gemini" / "antigravity-cli" / "settings.json"))
+    monkeypatch.setattr(hooks, "AGY_STATUSLINE_HOOK_PATH", str(tt / "agy-statusline.py"))
+    monkeypatch.setattr(hooks, "AGY_BACKUP_PATH", str(tt / "agy-backup.json"))
     monkeypatch.setattr(hooks, "_LEGACY_PATHS", [])
     cfg = tmp_path / "_cfg"
     monkeypatch.setattr(config, "CONFIG_DIR", str(cfg))
@@ -1723,3 +1727,206 @@ def test_ask_components_kimi_question(monkeypatch):
     assert asked[0][0].startswith("[1] ")
     assert c.kimi_statusline is False
     assert c.cc_statusline is True and c.codex_faux_statusline is True
+
+
+# --- Antigravity CLI (agy) statusLine ---
+
+
+def _agy_only_home(tmp_path, monkeypatch, settings_text=None):
+    agy_dir = tmp_path / "agy-home"
+    agy_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr(hooks, "_AGY", str(agy_dir))
+    monkeypatch.setattr(hooks, "AGY_SETTINGS", str(agy_dir / "settings.json"))
+    if settings_text is not None:
+        (agy_dir / "settings.json").write_text(settings_text, encoding="utf-8")
+    return agy_dir
+
+
+def test_agy_statusline_render_injects_version_and_themes():
+    rendered = hooks._render_agy_statusline_hook()
+    assert f'__version__ = "{hooks.AGY_STATUSLINE_HOOK_VERSION}"' in rendered
+    assert "__AGY_STATUSLINE_HOOK_VERSION__" not in rendered
+    assert "__STATUSLINE_TRUECOLOR__" not in rendered
+    assert "__STATUSLINE_COLOR256__" not in rendered
+    assert 'sys.platform == "win32"' in rendered
+    compile(rendered, "<agy-statusline>", "exec")
+
+
+def test_agy_statusline_renders_three_lines_with_quota_and_title_fallback(tmp_path):
+    script = tmp_path / "agy-statusline.py"
+    script.write_text(hooks._render_agy_statusline_hook(), encoding="utf-8")
+    agy_dir = tmp_path / "agy"
+    cache_dir = agy_dir / "cache"
+    cache_dir.mkdir(parents=True)
+
+    # 预置 /usage 配额缓存（含 Gemini / Claude / Argon 三组）
+    future_iso = "2099-01-01T00:00:00Z"
+    (cache_dir / "statusline-quota.json").write_text(
+        json.dumps({
+            "fetched_at": time.time(),
+            "groups": [
+                {
+                    "name": "Gemini Models",
+                    "description": "Models within this group: Gemini 4 Hydrogen, Gemini 3.8 Flash",
+                    "buckets": [
+                        {"window": "5h", "remaining_fraction": 0.78, "reset_time": future_iso},
+                        {"window": "weekly", "remaining_fraction": 0.67, "reset_time": future_iso},
+                    ],
+                },
+                {
+                    "name": "Claude and GPT models",
+                    "description": "Models within this group: Claude Opus 5.5, Claude Sonnet 5.5",
+                    "buckets": [
+                        {"window": "5h", "remaining_fraction": 1.0, "reset_time": future_iso},
+                        {"window": "weekly", "remaining_fraction": 0.50, "reset_time": future_iso},
+                    ],
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    (cache_dir / "conversation_metadata.json").write_text(
+        json.dumps({"conversations": {"sid-123": {"summary": {"Title": "Codex Session Continue"}}}}),
+        encoding="utf-8",
+    )
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        "\n".join([
+            json.dumps({"type": "USER_INPUT", "created_at": "2026-11-16T10:00:00Z", "content": "hi"}),
+            json.dumps({"type": "PLANNER_RESPONSE", "created_at": "2026-11-16T10:01:00Z",
+                        "input_tokens": 1000, "cache_read_tokens": 9000, "output_tokens": 500}),
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    proj = tmp_path / "demo-proj"
+    proj.mkdir()
+
+    def run_for(model_obj):
+        payload = {
+            "conversation_id": "sid-123",
+            "transcript_path": str(transcript),
+            "model": model_obj,
+            "workspace": {"current_dir": str(proj), "project_dir": f"file://{proj}"},
+            "terminal_width": 140,
+            "context_window": {"context_window_size": 1000000, "used_percentage": 20.0},
+        }
+        r = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            env=dict(os.environ, AGY_HOME=str(agy_dir), COLORTERM="truecolor"),
+        )
+        assert r.returncode == 0 and r.stderr == ""
+        return re.sub(r"\x1b\[[0-9;]*m", "", r.stdout).splitlines()
+
+    lines_gem = run_for({"id": "gemini-4-hydrogen-high", "display_name": "Gemini 4 Hydrogen (High)"})
+    assert len(lines_gem) == 3
+    assert "[demo-proj]" in lines_gem[0] and "Gemini 4 Hydrogen (High)" in lines_gem[0]
+    assert "Total: 10k (90% cache)" in lines_gem[0]
+    assert "5h " in lines_gem[1] and "22%" in lines_gem[1] and "7d " in lines_gem[1] and "33%" in lines_gem[1]
+    assert "Ctx " in lines_gem[1] and "20%" in lines_gem[1]
+    assert lines_gem[2] == "Codex Session Continue | SID: sid-123"
+
+    lines_claude = run_for({"id": "claude-opus-5-5-high", "display_name": "Claude Opus 5.5 (High)"})
+    assert "0%" in lines_claude[1] and "50%" in lines_claude[1]
+
+
+def test_agy_statusline_refresh_quota_writes_cache(tmp_path):
+    script = tmp_path / "agy-statusline.py"
+    script.write_text(hooks._render_agy_statusline_hook(), encoding="utf-8")
+    agy_dir = tmp_path / "agy"
+    agy_dir.mkdir()
+    fake_agy = tmp_path / "fake-agy"
+    fake_agy.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json\n"
+        "print(json.dumps({'command': {'name': 'usage', 'data': {'groups': [{'name': 'Gemini Models', 'buckets': [{'window': '5h', 'remaining_fraction': 0.9}]}]}}}))\n",
+        encoding="utf-8",
+    )
+    os.chmod(fake_agy, 0o755)
+    r = subprocess.run(
+        [sys.executable, str(script), "--refresh-quota"],
+        capture_output=True,
+        text=True,
+        env=dict(os.environ, AGY_HOME=str(agy_dir), TT_AGY_BIN=str(fake_agy)),
+    )
+    assert r.returncode == 0
+    cached = json.loads((agy_dir / "cache" / "statusline-quota.json").read_text(encoding="utf-8"))
+    assert cached["groups"][0]["name"] == "Gemini Models"
+
+
+def test_recommended_components_agy_probe(tmp_path, monkeypatch):
+    agy_dir = _agy_only_home(tmp_path, monkeypatch)
+    # 全新或空 command（官方占位）→ 接管
+    assert hooks.recommended_components().agy_statusline is True
+    (agy_dir / "settings.json").write_text(
+        json.dumps({"statusLine": {"type": "", "command": "", "enabled": True}}),
+        encoding="utf-8",
+    )
+    assert hooks.recommended_components().agy_statusline is True
+    # 非 tt 自定义 command → 不接管（即使已有 intent=True）
+    (agy_dir / "settings.json").write_text(
+        json.dumps({"statusLine": {"type": "command", "command": "/tmp/custom.sh", "enabled": True}}),
+        encoding="utf-8",
+    )
+    assert hooks.recommended_components().agy_statusline is False
+    config.save_agy_statusline(True)
+    assert hooks.recommended_components().agy_statusline is False
+    # JSON 损坏 → 不接管
+    (agy_dir / "settings.json").write_text("{bad json", encoding="utf-8")
+    assert hooks.recommended_components().agy_statusline is False
+
+
+def test_setup_optout_update_and_unsetup_agy(tmp_path, monkeypatch):
+    agy_dir = _agy_only_home(
+        tmp_path,
+        monkeypatch,
+        json.dumps({"model": "Gemini 4 Hydrogen (High)", "statusLine": {"type": "command", "command": "/tmp/prev.sh"}}),
+    )
+    settings_path = agy_dir / "settings.json"
+
+    # 显式接管：备份原 statusLine、写入托管命令与 stack_with_default=True
+    hooks.setup(components=hooks.SetupComponents(agy_statusline=True), quiet=True)
+    assert hooks.agy_statusline_active() is True
+    assert hooks.is_setup() is True
+    assert os.path.exists(hooks.AGY_STATUSLINE_HOOK_PATH)
+    written = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert written["model"] == "Gemini 4 Hydrogen (High)"
+    assert written["statusLine"]["stack_with_default"] is True
+    assert "agy-statusline" in written["statusLine"]["command"]
+    assert json.loads(open(hooks.AGY_BACKUP_PATH, encoding="utf-8").read())["statusLine"]["command"] == "/tmp/prev.sh"
+
+    # 版本落后触发 needs_update + update_hook 同步
+    with open(hooks.AGY_STATUSLINE_HOOK_PATH, "w", encoding="utf-8") as f:
+        f.write('__version__ = "0.0"\n')
+    assert hooks.needs_update() is True
+    hooks.update_hook()
+    assert hooks._installed_agy_statusline_version() == hooks.AGY_STATUSLINE_HOOK_VERSION
+    assert hooks.needs_update() is False
+
+    # unsetup 恢复原 statusLine 并删除托管脚本与配额缓存
+    (agy_dir / "cache").mkdir(exist_ok=True)
+    (agy_dir / "cache" / "statusline-quota.json").write_text("{}", encoding="utf-8")
+    hooks.unsetup()
+    assert not os.path.exists(hooks.AGY_STATUSLINE_HOOK_PATH)
+    assert not (agy_dir / "cache" / "statusline-quota.json").exists()
+    restored = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert restored["statusLine"]["command"] == "/tmp/prev.sh"
+
+    # opt-out：保留无自定义或移除 tt statusLine
+    hooks.setup(components=hooks.SetupComponents(agy_statusline=True), quiet=True)
+    hooks.setup(components=hooks.SetupComponents(agy_statusline=False), quiet=True)
+    assert config.agy_statusline_intent() is False
+    assert hooks.is_setup() is True
+    assert not os.path.exists(hooks.AGY_STATUSLINE_HOOK_PATH)
+
+
+def test_cli_setup_flow_accepts_agy_only(tmp_path, monkeypatch):
+    from token_tracker import cli
+    _agy_only_home(tmp_path, monkeypatch, json.dumps({"model": "Gemini 4 Hydrogen (High)"}))
+    monkeypatch.setattr(cli, "detect_agents", lambda: [])
+    monkeypatch.setattr(cli, "_should_run_wizard", lambda: False)
+    monkeypatch.setattr("sys.argv", ["tt", "setup"])
+    cli.main()
+    assert hooks.agy_statusline_active() is True

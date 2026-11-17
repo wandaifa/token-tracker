@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from importlib import resources
 
 from . import config, sidebar_install
-from .adapters.util import claude_home, codex_home, kimi_home
+from .adapters.util import agy_home, claude_home, codex_home, kimi_home
 from .analyzer import cost as _cost_mod
 from .i18n import t
 from .ui import themes
@@ -17,19 +17,26 @@ from .ui.console import get_console
 _CLAUDE = claude_home()  # CLAUDE_CONFIG_DIR 覆盖 / ~/.claude
 _CODEX = codex_home()    # CODEX_HOME 覆盖 / ~/.codex
 _KIMI = kimi_home()      # KIMI_CODE_HOME 覆盖 / ~/.kimi-code
+_AGY = agy_home()        # AGY_HOME 覆盖 / ~/.gemini/antigravity-cli
 
 
 @dataclass
 class SetupComponents:
-    """组件开关。CC statusLine 接管、Codex 伪 statusline（Stop hook）与 Kimi statusline
-    （tui.toml [status_line].command）均为可选组件，意图持久化到 config.json。"""
+    """组件开关。CC statusLine 接管、Codex 伪 statusline（Stop hook）、Kimi statusline
+    （tui.toml [status_line].command）与 Antigravity CLI statusLine 均为可选组件，意图持久化到 config.json。"""
     cc_statusline: bool = True
     codex_faux_statusline: bool = True
     kimi_statusline: bool = True
+    agy_statusline: bool = True
 
     @classmethod
     def all_on(cls) -> "SetupComponents":
-        return cls(cc_statusline=True, codex_faux_statusline=True, kimi_statusline=True)
+        return cls(
+            cc_statusline=True,
+            codex_faux_statusline=True,
+            kimi_statusline=True,
+            agy_statusline=True,
+        )
 
 # tt 自己的产物（statusline 脚本 + 缓存 + 备份）集中放 ~/.config/token-tracker（XDG，跟 theme/lang 同处）；
 # settings.json / config.toml 是「改 agent 自己的配置」、必须留 agent 目录。statusLine/hook 的 command
@@ -46,11 +53,15 @@ KIMI_STATUSLINE_HOOK_PATH = os.path.join(_TT, "kimi-statusline.py")
 KIMI_STATUSLINE_STATE_PATH = os.path.join(_TT, "tt-kimi-statusline.json")
 # Kimi statusline 的 5h/7d 限额缓存（模板的 detached --refresh-quota 子进程写）
 KIMI_STATUSLINE_QUOTA_PATH = os.path.join(_TT, "tt-kimi-quota.json")
+AGY_SETTINGS = os.path.join(_AGY, "settings.json")         # 改 Antigravity CLI 配置，留 agent 目录
+AGY_STATUSLINE_HOOK_PATH = os.path.join(_TT, "agy-statusline.py")
+AGY_BACKUP_PATH = os.path.join(_TT, "agy-backup.json")
 STATUS_FILE = config.STATUS_FILE                          # CC statusline 缓存（单一权威定义在 config）
 TERMINAL_MAP_FILE = config.TERMINAL_MAP_FILE              # Codex Stop hook 采集的终端定位映射
 HOOK_VERSION = "2.2"  # 2.2: 终端映射仅采集 iTerm2；共享状态仍随帧携带
 STATUSLINE_HOOK_VERSION = "2.3"  # 2.3: 仅使用 iTerm2 终端映射，保留纯文本摘要与 --direct 彩色输出
 KIMI_STATUSLINE_HOOK_VERSION = "1.3"  # 1.3: 终端映射仅采集 iTerm2，保留现有 effort 与 TPS 计算
+AGY_STATUSLINE_HOOK_VERSION = "1.0"   # 1.0: 三行主题彩色状态栏 + 后台 /usage 配额缓存 + 本地标题兜底
 
 CC_BACKUP_PATH = os.path.join(_TT, "cc-backup.json")
 CODEX_BACKUP_LEGACY = os.path.join(_TT, "codex-backup.json")  # 老用户残留，unsetup 时还能恢复
@@ -69,6 +80,25 @@ _LEGACY_PATHS = [
 
 def _load_template(name: str) -> str:
     return (resources.files("token_tracker.templates") / name).read_text(encoding="utf-8")
+
+
+def _write_executable_script(path: str, content: str) -> None:
+    os.makedirs(_TT, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    if os.name != "nt":
+        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def _read_installed_version(path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("__version__"):
+                    return line.split("=", 1)[1].strip().strip('"\'')
+    except OSError:
+        pass
+    return None
 
 
 # --- helpers ---
@@ -171,6 +201,65 @@ def kimi_statusline_active() -> bool:
     return sidebar_install.kimi_statusline_hook_present()
 
 
+# --- Antigravity CLI (agy) statusLine ---
+
+
+def _render_agy_statusline_hook() -> str:
+    """注入 AGY_STATUSLINE_HOOK_VERSION + 当前主题 truecolor / 256 两套配色，得到要落盘的 agy 状态栏脚本。"""
+    name = config.resolve_theme()
+    return (
+        _load_template("agy_statusline.py")
+        .replace("__AGY_STATUSLINE_HOOK_VERSION__", AGY_STATUSLINE_HOOK_VERSION)
+        .replace("__STATUSLINE_TRUECOLOR__", repr(themes.theme_to_statusline_ansi(name)))
+        .replace("__STATUSLINE_COLOR256__", repr(themes.theme_to_statusline_ansi(name, "256")))
+    )
+
+
+def _write_agy_statusline_script() -> None:
+    _write_executable_script(AGY_STATUSLINE_HOOK_PATH, _render_agy_statusline_hook())
+
+
+def _installed_agy_statusline_version() -> str | None:
+    return _read_installed_version(AGY_STATUSLINE_HOOK_PATH)
+
+
+def _is_tt_agy_command(cmd: str) -> bool:
+    return "agy-statusline" in cmd
+
+
+def _agy_statusline_command(python: str | None = None) -> str:
+    return _build_cc_command(python or sys.executable or "python3", AGY_STATUSLINE_HOOK_PATH)
+
+
+def _agy_statusline_payload(python: str | None = None) -> dict:
+    return {
+        "type": "command",
+        "command": _agy_statusline_command(python),
+        "padding": 0,
+        "enabled": True,
+        "stack_with_default": True,
+    }
+
+
+def _agy_settings_has_tt_statusline() -> bool:
+    try:
+        with open(AGY_SETTINGS, encoding="utf-8") as f:
+            settings = json.load(f)
+        sl = settings.get("statusLine")
+        return isinstance(sl, dict) and _is_tt_agy_command(sl.get("command") or "")
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
+def agy_statusline_active() -> bool:
+    """双因素：用户意图 AND 实际装好（脚本存在 + agy settings.json 的 statusLine 指向 tt 脚本）。"""
+    if config.agy_statusline_intent() is not True:
+        return False
+    if not os.path.exists(AGY_STATUSLINE_HOOK_PATH):
+        return False
+    return _agy_settings_has_tt_statusline()
+
+
 # 迁移 / 卸载时定位 tt 旧版追加的整段 [[hooks.Stop]]——
 # 同时认新（codex-statusline）/ 旧（tt-statusline）两种特征码。
 # command 值兼容三代形态：双引号 basic string（最老）、单引号 literal 裸拼接（0.4.x）、
@@ -254,30 +343,36 @@ def cc_statusline_active() -> bool:
     return _settings_has_tt_statusline()
 
 
+def _probe_json_statusline_component(settings_path: str, is_tt_fn, intent: bool | None) -> bool:
+    allow = True
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, encoding="utf-8") as f:
+                settings = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            settings = None
+        if not isinstance(settings, dict):
+            allow = False
+        else:
+            sl = settings.get("statusLine")
+            cmd = sl.get("command") if isinstance(sl, dict) else None
+            if cmd and not (isinstance(cmd, str) and is_tt_fn(cmd)):
+                allow = False
+    if not allow:
+        return False
+    return intent if intent is not None else True
+
+
 def recommended_components() -> SetupComponents:
     """setup(components=None) 与 wizard 问题默认值的唯一权威来源。
-    CC 端探测优先（do-no-harm）：settings.json 里有非 tt 的自定义 statusLine（或 JSON 损坏）→ False，
+    CC / AGY 端探测优先（do-no-harm）：settings.json 里有非 tt 的自定义 statusLine（或 JSON 损坏）→ False，
     绝不静默替换用户自定义；否则已记录意图非 None → 用意图；否则 → True（全新 / 已是 tt 的 → 接管）。
     Codex 端无从探测「用户自己的 statusline」：已记录意图非 None → 用意图，否则 → True。
     Kimi 端探测 tui.toml（do-no-harm，同 CC 哲学）：用户自定义 status_line.command → False，
     绝不静默替换；否则已记录意图非 None → 用意图；否则 → True。"""
-    cc = True
-    if os.path.exists(CLAUDE_SETTINGS):
-        try:
-            with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
-                settings = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            settings = None  # 损坏 → 不可安全触碰
-        if not isinstance(settings, dict):
-            cc = False
-        else:
-            sl = settings.get("statusLine")
-            cmd = sl.get("command") if isinstance(sl, dict) else None
-            if cmd and not (isinstance(cmd, str) and _is_tt_cc_command(cmd)):
-                cc = False  # 非 tt 的自定义 statusLine（含非法类型）→ 不接管
-    if cc:
-        cc_intent = config.cc_statusline_intent()
-        cc = cc_intent if cc_intent is not None else True
+    cc = _probe_json_statusline_component(
+        CLAUDE_SETTINGS, _is_tt_cc_command, config.cc_statusline_intent(),
+    )
     codex_intent = config.codex_faux_statusline_intent()
     codex = codex_intent if codex_intent is not None else True
     if sidebar_install.kimi_statusline_user_custom():
@@ -285,7 +380,25 @@ def recommended_components() -> SetupComponents:
     else:
         kimi_intent = config.kimi_statusline_intent()
         kimi = kimi_intent if kimi_intent is not None else True
-    return SetupComponents(cc_statusline=cc, codex_faux_statusline=codex, kimi_statusline=kimi)
+    agy = _probe_json_statusline_component(
+        AGY_SETTINGS, _is_tt_agy_command, config.agy_statusline_intent(),
+    )
+    return SetupComponents(
+        cc_statusline=cc,
+        codex_faux_statusline=codex,
+        kimi_statusline=kimi,
+        agy_statusline=agy,
+    )
+
+
+def has_setup_target() -> bool:
+    """是否检测到至少一个可配置状态的 agent 目录（含仅装状态栏的 Antigravity CLI）。"""
+    return (
+        os.path.isdir(os.path.dirname(CLAUDE_SETTINGS))
+        or os.path.isdir(CODEX_DIR)
+        or os.path.isdir(_KIMI)
+        or os.path.isdir(_AGY)
+    )
 
 
 def is_setup() -> bool:
@@ -295,7 +408,8 @@ def is_setup() -> bool:
     has_cc = os.path.isdir(os.path.dirname(CLAUDE_SETTINGS))
     has_codex = os.path.isdir(CODEX_DIR)
     has_kimi = os.path.isdir(_KIMI)
-    if not has_cc and not has_codex and not has_kimi:
+    has_agy = os.path.isdir(_AGY)
+    if not has_cc and not has_codex and not has_kimi and not has_agy:
         return False
     if has_cc:
         intent = config.cc_statusline_intent()
@@ -318,6 +432,13 @@ def is_setup() -> bool:
         if intent is None:  # 没跑过 wizard、没表达意图 → 视为未配（老用户升级后重走一次 setup）
             return False
         if intent and not kimi_statusline_active():
+            return False
+    if has_agy:
+        intent = config.agy_statusline_intent()
+        if intent is None:
+            if not _agy_settings_has_tt_statusline():
+                return False
+        elif intent and not agy_statusline_active():
             return False
     return True
 
@@ -382,35 +503,62 @@ def _migrate_legacy() -> None:
                 pass
 
 
-def _cc_command_needs_sync() -> bool:
-    """检测 settings.json 里 tt 的 statusLine.command 是否需要重写为新格式（issue #13/#14）。
-    用户原 command（非 tt）一律不动。"""
-    if not os.path.exists(CLAUDE_SETTINGS):
+def _json_command_needs_sync(settings_path: str, is_tt_fn) -> bool:
+    """检测 JSON settings 里 tt 的 statusLine.command 是否需要重写为新格式。用户原 command 一律不动。"""
+    if not os.path.exists(settings_path):
         return False
     try:
-        with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             settings = json.load(f)
     except (OSError, json.JSONDecodeError):
         return False
-    cmd = (settings.get("statusLine") or {}).get("command") or ""
-    if not _is_tt_cc_command(cmd):
+    sl = settings.get("statusLine") if isinstance(settings, dict) else None
+    cmd = sl.get("command") if isinstance(sl, dict) else ""
+    if not isinstance(cmd, str) or not is_tt_fn(cmd):
         return False
     return _cc_command_outdated(cmd)
 
 
-def _sync_cc_command() -> None:
-    """重写 settings.json 里 tt 的 statusLine.command 字段（保留其它字段不动）。"""
+def _sync_json_command(settings_path: str, is_tt_fn, make_payload_fn) -> None:
+    """重写 JSON settings 里 tt 的 statusLine 字段（保留其它字段不动）。"""
     try:
-        with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             settings = json.load(f)
     except (OSError, json.JSONDecodeError):
         return
-    if not _is_tt_cc_command((settings.get("statusLine") or {}).get("command") or ""):
+    sl = settings.get("statusLine") if isinstance(settings, dict) else None
+    cmd = sl.get("command") if isinstance(sl, dict) else ""
+    if not isinstance(cmd, str) or not is_tt_fn(cmd):
         return
-    python = sys.executable or "python3"
-    settings["statusLine"] = {"type": "command", "command": _build_cc_command(python, HOOK_SCRIPT_PATH)}
-    with open(CLAUDE_SETTINGS, "w", encoding="utf-8") as f:
+    settings["statusLine"] = make_payload_fn()
+    with open(settings_path, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=2, ensure_ascii=False)
+
+
+def _cc_command_needs_sync() -> bool:
+    """检测 settings.json 里 tt 的 statusLine.command 是否需要重写为新格式（issue #13/#14）。
+    用户原 command（非 tt）一律不动。"""
+    return _json_command_needs_sync(CLAUDE_SETTINGS, _is_tt_cc_command)
+
+
+def _sync_cc_command() -> None:
+    """重写 settings.json 里 tt 的 statusLine.command 字段（保留其它字段不动）。"""
+    python = sys.executable or "python3"
+    _sync_json_command(
+        CLAUDE_SETTINGS,
+        _is_tt_cc_command,
+        lambda: {"type": "command", "command": _build_cc_command(python, HOOK_SCRIPT_PATH)},
+    )
+
+
+def _agy_command_needs_sync() -> bool:
+    """检测 agy settings.json 里 tt 的 statusLine.command 是否需要重写为新格式。"""
+    return _json_command_needs_sync(AGY_SETTINGS, _is_tt_agy_command)
+
+
+def _sync_agy_command() -> None:
+    """重写 agy settings.json 里 tt 的 statusLine 字段（保留其它字段与 stack_with_default=True）。"""
+    _sync_json_command(AGY_SETTINGS, _is_tt_agy_command, _agy_statusline_payload)
 
 
 def _sync_codex_managed_hooks(quiet: bool = False) -> bool:
@@ -483,6 +631,13 @@ def needs_update() -> bool:
             return True
         if sidebar_install.kimi_statusline_needs_sync(_kimi_statusline_command()):
             return True
+    if os.path.exists(AGY_STATUSLINE_HOOK_PATH) and _installed_agy_statusline_version() != AGY_STATUSLINE_HOOK_VERSION:
+        return True
+    if os.path.isdir(_AGY) and config.agy_statusline_intent() is True:
+        if _installed_agy_statusline_version() != AGY_STATUSLINE_HOOK_VERSION:
+            return True
+        if _agy_command_needs_sync():
+            return True
     return _cc_command_needs_sync()  # settings.json 里 command 格式过时也算待更新（issue #13/#14）
 
 
@@ -510,6 +665,12 @@ def update_hook() -> None:
             sidebar_install.install_kimi_statusline(_kimi_statusline_command())
         except ValueError:
             pass
+    if os.path.exists(AGY_STATUSLINE_HOOK_PATH) or (
+        os.path.isdir(_AGY) and config.agy_statusline_intent() is True and _agy_settings_has_tt_statusline()
+    ):
+        _write_agy_statusline_script()
+    if _agy_command_needs_sync():
+        _sync_agy_command()
 
 
 # --- setup ---
@@ -525,8 +686,9 @@ def setup(auto: bool = False, components: SetupComponents | None = None, quiet: 
     has_cc = os.path.isdir(os.path.dirname(CLAUDE_SETTINGS))
     has_codex = os.path.isdir(CODEX_DIR)
     has_kimi = os.path.isdir(_KIMI)
+    has_agy = os.path.isdir(_AGY)
 
-    if not has_cc and not has_codex and not has_kimi:
+    if not has_cc and not has_codex and not has_kimi and not has_agy:
         p(f"[red]{t('no_agent_install')}[/red]")
         return
 
@@ -556,6 +718,12 @@ def setup(auto: bool = False, components: SetupComponents | None = None, quiet: 
         if not auto:
             p(f"[dim]{t('kimi_not_found')}[/dim]")
 
+    if has_agy:
+        _setup_agy(components, quiet)
+    else:
+        if not auto:
+            p(f"[dim]{t('agy_not_found')}[/dim]")
+
     # setup 真正落地了，写入当前引导版本——后续启动 cli 不再触发"老用户重新引导"。
     # early-return 分支（无 agent）不会到这，符合语义。
     config.save_setup_version()
@@ -571,52 +739,122 @@ def _migrate_cc_legacy_backup(settings: dict) -> None:
             json.dump({"statusLine": legacy["previousStatusLine"]}, f, indent=2)
 
 
+def _restore_json_statusline(
+    settings: dict,
+    backup_path: str,
+    is_tt_fn,
+    cache_paths: tuple[str, ...],
+    keys: tuple[str, str, str],
+    p,
+) -> None:
+    """statusLine 是 tt 的才动：从 backup_path 还原（或移除）+ 删缓存。"""
+    corrupt_key, restored_key, removed_key = keys
+    sl = settings.get("statusLine")
+    if not (isinstance(sl, dict) and is_tt_fn(sl.get("command") or "")):
+        return
+    previous = None
+    if os.path.exists(backup_path):
+        try:
+            with open(backup_path, encoding="utf-8") as f:
+                previous = json.load(f).get("statusLine")
+        except (OSError, json.JSONDecodeError):
+            p(f"[yellow]{t(corrupt_key, path=backup_path)}[/yellow]")
+        else:
+            os.remove(backup_path)
+    if isinstance(previous, dict):
+        settings["statusLine"] = previous
+        p(f"[green]✓[/green] {t(restored_key)}")
+    else:
+        settings.pop("statusLine", None)
+        p(f"[green]✓[/green] {t(removed_key)}")
+    for cp in cache_paths:
+        if os.path.exists(cp):
+            os.remove(cp)
+            p(f"[green]✓[/green] {t('deleted_cache', path=cp)}")
+
+
 def _restore_cc_statusline(settings: dict, p) -> None:
     """statusLine 是 tt 的才动：从 cc-backup.json 还原（或直接移除）+ 清 tokenTracker 残留 + 删缓存。
     opt-out（_optout_claude）与卸载（_unsetup_claude）共用；打印走传入的 p（quiet 感知）。"""
-    sl = settings.get("statusLine")
-    if not (isinstance(sl, dict) and _is_tt_cc_command(sl.get("command") or "")):
-        return
-    previous = None
-    if os.path.exists(CC_BACKUP_PATH):  # 新位置（独立文件）
-        try:
-            with open(CC_BACKUP_PATH, encoding="utf-8") as f:
-                previous = json.load(f).get("statusLine")
-        except (OSError, json.JSONDecodeError):
-            # 备份读不出来 → 保留文件供手动抢救，statusLine 走移除分支
-            p(f"[yellow]{t('cc_backup_corrupt', path=CC_BACKUP_PATH)}[/yellow]")
-        else:
-            os.remove(CC_BACKUP_PATH)
-    if isinstance(previous, dict):
-        settings["statusLine"] = previous
-        p(f"[green]✓[/green] {t('cc_restored')}")
-    else:
-        settings.pop("statusLine", None)
-        p(f"[green]✓[/green] {t('cc_removed')}")
-    settings.pop("tokenTracker", None)  # 顺手清掉老用户在 settings 里的子字段残留
-    if os.path.exists(STATUS_FILE):
-        os.remove(STATUS_FILE)
-        p(f"[green]✓[/green] {t('deleted_cache', path=STATUS_FILE)}")
+    _restore_json_statusline(
+        settings,
+        CC_BACKUP_PATH,
+        _is_tt_cc_command,
+        (STATUS_FILE,),
+        ("cc_backup_corrupt", "cc_restored", "cc_removed"),
+        p,
+    )
+    settings.pop("tokenTracker", None)
 
 
-def _optout_claude(p) -> None:
-    """CC opt-out：删 tt 脚本 + 只还原「本来是 tt 的」statusLine，用户自定义的完全不碰。
-    settings.json 损坏时不碰 settings（只删脚本），避免安装路径 json.load 抛异常的崩溃循环。"""
-    if os.path.exists(HOOK_SCRIPT_PATH):
-        os.remove(HOOK_SCRIPT_PATH)
-    if os.path.exists(CLAUDE_SETTINGS):
+def _optout_json_statusline(
+    script_path: str,
+    settings_path: str,
+    restore_fn,
+    skipped_key: str,
+    p,
+) -> None:
+    if os.path.exists(script_path):
+        os.remove(script_path)
+    if os.path.exists(settings_path):
         try:
-            with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
         except (OSError, json.JSONDecodeError):
             settings = None
         if isinstance(settings, dict):
             before = json.dumps(settings, sort_keys=True)
-            _restore_cc_statusline(settings, p)
-            if json.dumps(settings, sort_keys=True) != before:  # 有实际改动才写回
-                with open(CLAUDE_SETTINGS, "w", encoding="utf-8") as f:
+            restore_fn(settings, p)
+            if json.dumps(settings, sort_keys=True) != before:
+                with open(settings_path, "w", encoding="utf-8") as f:
                     json.dump(settings, f, indent=2, ensure_ascii=False)
-    p(f"[dim]{t('cc_statusline_skipped')}[/dim]")
+    p(f"[dim]{t(skipped_key)}[/dim]")
+
+
+def _optout_claude(p) -> None:
+    """CC opt-out：删 tt 脚本 + 只还原「本来是 tt 的」statusLine，用户自定义的完全不碰。"""
+    _optout_json_statusline(
+        HOOK_SCRIPT_PATH, CLAUDE_SETTINGS, _restore_cc_statusline, "cc_statusline_skipped", p,
+    )
+
+
+def _setup_json_statusline(
+    settings_path: str,
+    write_script_fn,
+    backup_path: str,
+    is_tt_fn,
+    make_payload_fn,
+    keys: tuple[str, str, str],
+    p,
+    pre_backup_hook=None,
+) -> None:
+    corrupt_key, configured_key, restart_key = keys
+    settings: dict = {}
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, encoding="utf-8") as f:
+                settings = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            get_console().print(f"[red]{t(corrupt_key, path=settings_path)}[/red]")
+            return
+
+    write_script_fn()
+    if pre_backup_hook is not None:
+        pre_backup_hook(settings)
+
+    existing = settings.get("statusLine")
+    if isinstance(existing, dict) and existing.get("command") and not is_tt_fn(existing.get("command") or ""):
+        p(f"[yellow]{t('sl_backup_replace')}[/yellow]")
+        os.makedirs(_TT, exist_ok=True)
+        with open(backup_path, "w", encoding="utf-8") as f:
+            json.dump({"statusLine": existing}, f, indent=2)
+
+    settings["statusLine"] = make_payload_fn()
+    with open(settings_path, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
+
+    p(f"[green]✓[/green] {t(configured_key)}")
+    p(f"[dim]{t(restart_key)}[/dim]")
 
 
 def _setup_claude(components: SetupComponents, quiet: bool = False) -> None:
@@ -628,37 +866,55 @@ def _setup_claude(components: SetupComponents, quiet: bool = False) -> None:
         _optout_claude(p)
         return
 
-    settings: dict = {}
-    if os.path.exists(CLAUDE_SETTINGS):
-        try:
-            with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
-                settings = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            # settings.json 损坏时不能静默覆盖（里面可能是用户手改打错的配置）——
-            # 报错跳过 CC 端；错误不受 quiet 抑制（wizard 场景也必须让用户看到）
-            get_console().print(f"[red]{t('cc_settings_corrupt', path=CLAUDE_SETTINGS)}[/red]")
-            return
-
-    _write_cc_statusline_script()
-
-    _migrate_cc_legacy_backup(settings)  # 老用户：把藏在 settings 里的备份挪到 cc-backup.json
-
-    existing = settings.get("statusLine")
-    if existing and not _is_tt_cc_command(existing.get("command") or ""):
-        # 用户原 statusLine 备份到独立文件，不污染 agent 配置
-        p(f"[yellow]{t('sl_backup_replace')}[/yellow]")
-        os.makedirs(_TT, exist_ok=True)
-        with open(CC_BACKUP_PATH, "w", encoding="utf-8") as f:
-            json.dump({"statusLine": existing}, f, indent=2)
-
     python = sys.executable or "python3"
-    settings["statusLine"] = {"type": "command", "command": _build_cc_command(python, HOOK_SCRIPT_PATH)}
+    _setup_json_statusline(
+        CLAUDE_SETTINGS,
+        _write_cc_statusline_script,
+        CC_BACKUP_PATH,
+        _is_tt_cc_command,
+        lambda: {"type": "command", "command": _build_cc_command(python, HOOK_SCRIPT_PATH)},
+        ("cc_settings_corrupt", "cc_configured", "restart_cc"),
+        p,
+        pre_backup_hook=_migrate_cc_legacy_backup,
+    )
 
-    with open(CLAUDE_SETTINGS, "w", encoding="utf-8") as f:
-        json.dump(settings, f, indent=2, ensure_ascii=False)
 
-    p(f"[green]✓[/green] {t('cc_configured')}")
-    p(f"[dim]{t('restart_cc')}[/dim]")
+def _restore_agy_statusline(settings: dict, p) -> None:
+    quota_cache = os.path.join(_AGY, "cache", "statusline-quota.json")
+    _restore_json_statusline(
+        settings,
+        AGY_BACKUP_PATH,
+        _is_tt_agy_command,
+        (quota_cache, f"{quota_cache}.lock"),
+        ("agy_backup_corrupt", "agy_restored", "agy_removed"),
+        p,
+    )
+
+
+def _setup_agy(components: SetupComponents, quiet: bool = False) -> None:
+    """Antigravity CLI 端装/卸 statusLine 接管。"""
+    p = (lambda *a, **k: None) if quiet else get_console().print
+    config.save_agy_statusline(components.agy_statusline)
+
+    if not components.agy_statusline:
+        _optout_json_statusline(
+            AGY_STATUSLINE_HOOK_PATH,
+            AGY_SETTINGS,
+            _restore_agy_statusline,
+            "agy_statusline_skipped",
+            p,
+        )
+        return
+
+    _setup_json_statusline(
+        AGY_SETTINGS,
+        _write_agy_statusline_script,
+        AGY_BACKUP_PATH,
+        _is_tt_agy_command,
+        _agy_statusline_payload,
+        ("agy_settings_corrupt", "agy_configured", "restart_agy"),
+        p,
+    )
 
 
 def _setup_codex(components: SetupComponents, quiet: bool = False) -> None:
@@ -781,6 +1037,7 @@ def unsetup() -> None:
     has_cc = os.path.isdir(os.path.dirname(CLAUDE_SETTINGS))
     has_codex = os.path.isdir(CODEX_DIR)
     has_kimi = os.path.isdir(_KIMI)
+    has_agy = os.path.isdir(_AGY)
 
     if has_cc:
         _unsetup_claude()
@@ -790,31 +1047,49 @@ def unsetup() -> None:
     if has_kimi:
         _unsetup_kimi_statusline()
         _unsetup_kimi_sidebar()
-    if not has_cc and not has_codex and not has_kimi:
+    if has_agy:
+        _unsetup_agy()
+    if not has_cc and not has_codex and not has_kimi and not has_agy:
         get_console().print(f"[dim]{t('no_agent_detected')}[/dim]")
+
+
+def _unsetup_json_statusline(
+    script_path: str,
+    settings_path: str,
+    restore_fn,
+    corrupt_key: str,
+) -> None:
+    if os.path.exists(script_path):
+        os.remove(script_path)
+        get_console().print(f"[green]✓[/green] {t('deleted_file', path=script_path)}")
+
+    if not os.path.exists(settings_path):
+        return
+
+    try:
+        with open(settings_path, encoding="utf-8") as f:
+            settings = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        get_console().print(f"[red]{t(corrupt_key, path=settings_path)}[/red]")
+        return
+
+    restore_fn(settings, get_console().print)
+
+    with open(settings_path, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
 
 
 def _unsetup_claude() -> None:
     _migrate_legacy()  # 顺手清旧位置残留（老用户 unsetup 时也清）
-    if os.path.exists(HOOK_SCRIPT_PATH):
-        os.remove(HOOK_SCRIPT_PATH)
-        get_console().print(f"[green]✓[/green] {t('deleted_file', path=HOOK_SCRIPT_PATH)}")
+    _unsetup_json_statusline(
+        HOOK_SCRIPT_PATH, CLAUDE_SETTINGS, _restore_cc_statusline, "cc_settings_corrupt_unsetup",
+    )
 
-    if not os.path.exists(CLAUDE_SETTINGS):
-        return
 
-    try:
-        with open(CLAUDE_SETTINGS, encoding="utf-8") as f:
-            settings = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        # 损坏就不动 settings.json（无法定位 tt 的 statusLine 段），提示手动处理
-        get_console().print(f"[red]{t('cc_settings_corrupt_unsetup', path=CLAUDE_SETTINGS)}[/red]")
-        return
-
-    _restore_cc_statusline(settings, get_console().print)
-
-    with open(CLAUDE_SETTINGS, "w", encoding="utf-8") as f:
-        json.dump(settings, f, indent=2, ensure_ascii=False)
+def _unsetup_agy() -> None:
+    _unsetup_json_statusline(
+        AGY_STATUSLINE_HOOK_PATH, AGY_SETTINGS, _restore_agy_statusline, "agy_settings_corrupt_unsetup",
+    )
 
 
 def _unsetup_codex() -> None:

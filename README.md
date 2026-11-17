@@ -1,6 +1,6 @@
 # Token Tracker (tt)
 
-本分支 `0.9.0` 保留 iTerm2 彩色摘要、原生分屏和官方 `0.5.9` 计费更新；不包含独立 `0.8.0` 的 Profile 自动创建改动。
+本分支 `0.10.0` 保留 iTerm2 彩色摘要、原生分屏和官方 `0.5.9` 计费更新，并新增 Antigravity CLI（`agy`）三行状态栏接入 `tt setup`；不包含独立 `0.8.0` 的 Profile 自动创建改动。
 
 本地 AI Agent Token 消耗追踪/分析工具，支持 **Claude Code**、**Codex** 和 **Kimi Code**。
 
@@ -28,7 +28,7 @@
 
 ## StatusLine 状态栏
 
-`tt setup` 自动为 Claude Code、Codex 和 Kimi Code 配置状态栏，脚本更新时自动升级。
+`tt setup` 自动为 Claude Code、Codex、Kimi Code 与 Antigravity CLI（`agy`）配置状态栏，脚本更新时自动升级。
 
 ### Claude Code（官方接口）
 
@@ -86,6 +86,16 @@ Codex 的 Hook `systemMessage` 会进入对话消息区，不能作为真正的�
 - 项目 / 分支 / 模型 / 权限模式来自 Kimi 官方快照（快照无思考档位，effort 取自会话 wire 里实际请求的 `thinkingEffort`），分支段的未提交增删行 / 未跟踪数按 `git diff --numstat` + `git ls-files` 统计（同 CC 状态栏）；Total 与 Cost 由状态栏脚本按会话 `wire.jsonl` **增量**累计（offset 缓存，每秒级调用只读新增部分），成本按内置 Kimi 官方定价估算
 - macOS / Linux / Windows 全平台支持（Windows 控制台 GBK 编码、后台刷新进程 detach 方式均已适配）
 - 已有自定义 `status_line.command` 时默认不覆盖（向导里选 No 也完全不碰）；`tt unsetup` 精确还原
+
+### Antigravity CLI / agy（官方 `statusLine` 接口）
+
+基于 `agy` 的 `settings.json` 自定义 `statusLine` 接口（默认启用 `stack_with_default: true`，叠加在原生状态栏下方），渲染三行主题彩色状态栏：
+
+- **L1** `[项目](分支* +A -D ?U) | Model: <模型> | Total: <总量> (<缓存率>% cache) | <轮数>t · <时长>`
+- **L2** `5h <进度条> <已用%> (<重置>) | 7d <进度条> <已用%> (<重置>) | Ctx <进度条> <%> (<已用>/<窗口>)` —— `5h / 7d` 由后台每 2 分钟静默执行 `agy -p "/usage" --output-format json`（零 LLM 消耗）更新缓存，并自动跟随当前模型所属配额组（Gemini / Claude & GPT / Argon）
+- **L3** `<会话标题…> | SID: <完整 Session ID>` —— 会话标题优先取 `stdin`，缺失时回退读取本地元数据与对话日志
+
+> 状态栏接管同样遵循不覆盖已有自定义 `statusLine` 原则，备份保存在 `~/.config/token-tracker/agy-backup.json`，`tt unsetup` 自动还原并清理缓存。
 
 ## 报表速览
 
