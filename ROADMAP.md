@@ -5,7 +5,7 @@
 
 ## 当前阶段
 
-`0.10.0` 已将 Antigravity CLI（`agy`）三行主题彩色状态栏正式接入 `tt setup` / `tt unsetup` / `update_hook` / `wizard`，不改动现有 `tt daily` / `sessions` 报表口径。支持后台静默缓存刷新 `agy -p "/usage" --output-format json` 按当前所选模型分组展示 `5h / 7d` 已用进度，并在第 3 行展示会话标题（含本地元数据/DB 回退）与完整 Session ID；不覆盖已有自定义 `statusLine`，`tt unsetup` 自动还原并清理缓存。原 `0.8.0` 候选仅保留在历史分支，未启用。
+`0.10.0` 已将 Antigravity CLI（`agy`）三行主题彩色状态栏正式接入 `tt setup` / `tt unsetup` / `update_hook` / `wizard`，不改动现有 `tt daily` / `sessions` 报表口径。支持后台静默缓存刷新 `agy -p "/usage" --output-format json` 按当前所选模型分组展示 `5h / 7d` 已用进度，并在第 3 行展示会话标题（含本地元数据/DB 回退）与完整 Session ID；不覆盖已有自定义 `statusLine`，`tt unsetup` 自动还原并清理缓存。原 `0.8.0` 候选仅保留在历史分支，未启用。2026-11-18 本机全局 pipx 与项目环境均已更新为 `0.10.0`，原全局 `0.6.10` 运行包已替换；agy 现有自定义状态栏及已生成的 Hook 脚本保持，本轮未接管或重新配置。
 
 ## 上游进度存档
 
@@ -186,6 +186,8 @@
 
 ## 最近验证
 
+- 2026-11-18：按用户明确授权，用 pipx 将全局 `token-tracker` 从 `0.6.10` 替换为个人 fork 提交 `697e680825d07879c0583924107674f72c5a431d` 的 `0.10.0`，未新增备份。全局 `tt --version` 返回 `0.10.0`；47 个安装包文件与源码逐字节一致，`direct_url.json` 精确匹配提交，pipx 元数据已同步，环境中仅有 `0.10.0` 分发记录，旧 `0.6.10.dist-info` 和旧专属 `codex_startup.py` 均不存在。Rich／questionary／Textual 版本保持，安装版 agy 脚本生成器可编译；七个配置及已有 Hook 脚本安装前后哈希一致。本次仅升级运行包，未执行 setup、接管 agy 已有自定义状态栏或进行终端视觉验收。
+- 2026-11-18：按用户要求以线上代码为准、不新增本地备份，丢弃旧功能分支的本地进度修改，将本地 `main` 对齐 `origin/main` 的 `697e680825d07879c0583924107674f72c5a431d`（`0.10.0`），不合入旧 `0.8.0` 功能分支。本机项目 `.venv` 已更新为 `0.10.0`；完整 pytest 为 `571 passed in 18.95s`，Ruff 全仓通过，mypy 44 个源文件无错误。同步后运行代码与远端一致；仅本条本地验证记录不同。用户级 `tt` 实测仍为 `0.6.10`，未改用户级安装、Hook、终端或 shell 配置，未重新进行真实终端视觉验收。
 - 2026-11-17：`0.10.0` 验证：沙箱内 `pytest`（剔除依赖本地端口与 `ps` 的 2 项）569 passed，沙箱外复跑该 2 项 passed（全套 571 项通过）；`ruff check .`、`mypy src/token_tracker`（44 个源文件）及 `git diff --check` 通过；新增 6 项测试覆盖 `agy` 模板渲染、三行输出与标题兜底、`--refresh-quota`、自定义 `statusLine` 保护、安装/更新/卸载/opt-out 闭环及纯 `agy` 环境 `tt setup`。
 - 2026-11-16：最终独立复验：原项目工作区已切至 `refactor/remove-tmux`（源码提交 `061d3fa`，旧 `0.8.0` 候选分支保留）；开发 venv 的旧 `0.7.0` 可编辑元数据已刷新，开发／用户 CLI 均为 `0.9.0`。活动源码、打包元数据和两份 README 中 tmux 匹配数为 0，9 份配置指纹保持；未发现 tmux 或 Token Tracker 常驻进程，无需关闭现有会话。
 - 2026-11-16：先以 3 个回归复现旧命令／跳转／Skill 仍支持 tmux，再移除对应代码。相关 193 项通过、完整源码及实际 wheel 各 565 passed，Ruff／mypy（43 文件）及 diff 检查通过。wheel 171630 字节、SHA256 `dee8e2c208600499131439c6f93596d5614022544f806b8b33c1973227472620`，46 文件与源／安装一致；真实渲染与旧版逐字一致，实际安装 `tt --version` 为 0.9.0。已更新 Claude 2.2／Codex 2.3 两脚本及托管 Skill，不执行 setup／update_hook。`needs_update()` 的旧 Hook 排序检查仍为 true：两条 CLI Agents handler 在 tt 后，现有同步器会将 tt 移至末尾；该代码及 hooks.json 与 0.7.1 相同，未在本轮调整。未关闭会话、未新启常驻进程、未新增依赖或推送／发布。
